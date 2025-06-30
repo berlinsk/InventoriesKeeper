@@ -1,0 +1,85 @@
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcuserdatad
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/xcshareddata/
+
+# SwiftPM
+.build/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Realm
+*.realm
+*.realm.lock
+*.realm.management
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.metadata_never_index
+.Trashes
+ehthumbs.db
+Thumbs.db
+Icon?
+Desktop DB
+Desktop DF
+
+# Thumbnails
+._*
+
+# Vim
+.*.swp
+
+# Temporary files
+*.tmp
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+
+# Crashlytics
+.crashlytics/
+
+# Firebase
+firebase_app_distribution/
+
+# SwiftUI
+*.preview-thumbnails
+
+# SwiftPM
+Artifacts/
+
+# Build products
+build/
+DerivedData/
+
+# Archives
+*.xcarchive
+
+# Environment files
+.env
+.env.*
