@@ -31,7 +31,12 @@ enum RealmConfig {
                 WeaponItemDetails.self,
                 CharacterInventoryDetails.self,
                 LocationInventoryDetails.self,
-                VehicleInventoryDetails.self
+                VehicleInventoryDetails.self,
+                Weight.self,
+                Currency.self,
+                Volume.self,
+                Calorie.self,
+                GameDate.self
             ]
         )
 

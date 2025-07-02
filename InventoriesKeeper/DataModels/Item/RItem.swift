@@ -17,12 +17,12 @@ enum ItemKind: String, PersistableEnum {
 }
 
 class FoodItemDetails: EmbeddedObject {
-    @Persisted var calories: Double?
+    @Persisted var calories: Calorie?
 }
 
 class LiquidItemDetails: EmbeddedObject {
-    @Persisted var calories: Double?
-    @Persisted var volume: Double?
+    @Persisted var calories: Calorie?
+    @Persisted var volume: Volume?
 }
 
 class BookItemDetails: EmbeddedObject {
@@ -36,7 +36,7 @@ class WeaponItemDetails: EmbeddedObject {
 class RItem: Object, ObjectKeyIdentifiable {
     @Persisted(primaryKey: true) var id: ObjectId
     @Persisted var common: ItemInventoryCommonFields?
-    @Persisted var expirationDate: Date?
+    @Persisted var expirationDate: GameDate?
     @Persisted var kind: ItemKind
     @Persisted var foodDetails: FoodItemDetails?
     @Persisted var liquidDetails: LiquidItemDetails?

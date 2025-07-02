@@ -11,9 +11,9 @@ import RealmSwift
 class ItemInventoryCommonFields: EmbeddedObject {
     @Persisted var name: String
     @Persisted var ownerId: ObjectId
-    @Persisted var weight: Double
-    @Persisted var personalValue: Double?
-    @Persisted var moneyAmount: Double?
+    @Persisted var weight: Weight?
+    @Persisted var personalValue: Currency?
+    @Persisted var moneyAmount: Currency?
     @Persisted var descriptionText: String?
     @Persisted var createdAt: Date
     @Persisted var photos: List<String>
