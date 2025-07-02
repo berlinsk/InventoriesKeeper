@@ -7,8 +7,23 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C41A20632E157C3500E9F356 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = C453A75C2E132FCC00959982 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		C453A75D2E132FCC00959982 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = C453A75C2E132FCC00959982 /* RealmSwift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C41A20642E157C3500E9F356 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C41A20632E157C3500E9F356 /* RealmSwift in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		C453A74D2E132F2100959982 /* InventoriesKeeper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = InventoriesKeeper.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -60,6 +75,7 @@
 				C453A7492E132F2100959982 /* Sources */,
 				C453A74A2E132F2100959982 /* Frameworks */,
 				C453A74B2E132F2100959982 /* Resources */,
+				C41A20642E157C3500E9F356 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);

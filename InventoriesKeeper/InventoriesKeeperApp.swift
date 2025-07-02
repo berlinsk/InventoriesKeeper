@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct InventoriesKeeperApp: App {
+    init() {
+//        RealmConfig.configure()
+        RealmConfig.configure(resetOnLaunch: true)
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }
