@@ -8,18 +8,28 @@
 import SwiftUI
 import RealmSwift
 
-struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
+class Test: Object, ObjectKeyIdentifiable {
+    @Persisted(primaryKey: true) var id: ObjectId
+    @Persisted var name: String = ""
 }
 
-#Preview {
-    ContentView()
+struct RootView: View {
+    @ObservedResults(Test.self) var items
+
+    var body: some View {
+        VStack {
+            Button("add") {
+                let newItem = Test()
+                newItem.name = "test \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .medium))"
+                $items.append(newItem)
+            }
+            .padding()
+
+            List {
+                ForEach(items) { item in
+                    Text(item.name)
+                }
+            }
+        }
+    }
 }
