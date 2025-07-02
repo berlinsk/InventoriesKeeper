@@ -18,10 +18,21 @@ enum RealmConfig {
             RealmResetService.reset()
         }
 
-        var config = Realm.Configuration(
+        let config = Realm.Configuration(
             inMemoryIdentifier: inMemoryIdentifier,
             deleteRealmIfMigrationNeeded: true,
-            objectTypes: objectTypes
+            objectTypes: objectTypes ?? [
+                RItem.self,
+                RInventory.self,
+                ItemInventoryCommonFields.self,
+                FoodItemDetails.self,
+                LiquidItemDetails.self,
+                BookItemDetails.self,
+                WeaponItemDetails.self,
+                CharacterInventoryDetails.self,
+                LocationInventoryDetails.self,
+                VehicleInventoryDetails.self
+            ]
         )
 
         Realm.Configuration.defaultConfiguration = config
