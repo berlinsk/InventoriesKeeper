@@ -9,9 +9,12 @@ import Foundation
 import RealmSwift
 
 enum WeightUnit: String, PersistableEnum, CaseIterable {
-    case kg
+    case mg
     case g
+    case kg
+    case tonne
     case lb
+    case oz
 }
 
 class Weight: EmbeddedObject {
@@ -19,7 +22,7 @@ class Weight: EmbeddedObject {
     @Persisted var unit: WeightUnit
 
     static let baseUnit: WeightUnit = .kg
-    
+
     convenience init(value: Double, unit: WeightUnit) {
         self.init()
         self.value = value
@@ -28,9 +31,12 @@ class Weight: EmbeddedObject {
 
     static func exchangeRate(from: WeightUnit, to: WeightUnit) -> Double {
         let rates: [WeightUnit: Double] = [
-            .kg: 1,
+            .mg: 0.000001,
             .g: 0.001,
-            .lb: 0.453592
+            .kg: 1,
+            .tonne: 1000,
+            .lb: 0.453592,
+            .oz: 0.0283495
         ]
         return rates[from]! / rates[to]!
     }
@@ -43,20 +49,30 @@ class Weight: EmbeddedObject {
         value * Self.exchangeRate(from: self.unit, to: unit)
     }
 
+    func convertedWeight(to unit: WeightUnit) -> Weight {
+        let convertedValue = self.converted(to: unit)
+        return Weight(value: convertedValue, unit: unit)
+    }
+
+    func optimizedUnit() -> Weight {
+        let unitsDescending: [WeightUnit] = [.tonne, .kg, .g, .mg]
+        for targetUnit in unitsDescending {
+            let convertedValue = self.converted(to: targetUnit)
+            if convertedValue >= 1 {
+                return Weight(value: convertedValue, unit: targetUnit)
+            }
+        }
+        return Weight(value: self.converted(to: .mg), unit: .mg)
+    }
+
     static func +(lhs: Weight, rhs: Weight) -> Weight {
         let total = lhs.inBaseUnit + rhs.inBaseUnit
-        let result = Weight()
-        result.value = total / Self.exchangeRate(from: .kg, to: lhs.unit)
-        result.unit = lhs.unit
-        return result
+        return Weight(value: total, unit: .kg)
     }
 
     static func -(lhs: Weight, rhs: Weight) -> Weight {
         let diff = lhs.inBaseUnit - rhs.inBaseUnit
-        let result = Weight()
-        result.value = diff / Self.exchangeRate(from: .kg, to: lhs.unit)
-        result.unit = lhs.unit
-        return result
+        return Weight(value: diff, unit: .kg)
     }
 
     static func <(lhs: Weight, rhs: Weight) -> Bool {

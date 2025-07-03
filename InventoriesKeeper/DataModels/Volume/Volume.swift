@@ -9,9 +9,13 @@ import Foundation
 import RealmSwift
 
 enum VolumeUnit: String, PersistableEnum, CaseIterable {
-    case l
     case ml
+    case l
+    case m3
     case gal
+    case qt
+    case pt
+    case floz
 }
 
 class Volume: EmbeddedObject {
@@ -20,11 +24,21 @@ class Volume: EmbeddedObject {
 
     static let baseUnit: VolumeUnit = .l
 
+    convenience init(value: Double, unit: VolumeUnit) {
+        self.init()
+        self.value = value
+        self.unit = unit
+    }
+
     static func exchangeRate(from: VolumeUnit, to: VolumeUnit) -> Double {
         let rates: [VolumeUnit: Double] = [
-            .l: 1,
             .ml: 0.001,
-            .gal: 3.78541
+            .l: 1,
+            .m3: 1000,
+            .gal: 3.78541,
+            .qt: 0.946353,
+            .pt: 0.473176,
+            .floz: 0.0295735
         ]
         return rates[from]! / rates[to]!
     }
@@ -37,20 +51,30 @@ class Volume: EmbeddedObject {
         value * Self.exchangeRate(from: self.unit, to: unit)
     }
 
+    func convertedVolume(to unit: VolumeUnit) -> Volume {
+        let convertedValue = self.converted(to: unit)
+        return Volume(value: convertedValue, unit: unit)
+    }
+
+    func optimizedUnit() -> Volume {
+        let unitsDescending: [VolumeUnit] = [.m3, .l, .ml]
+        for targetUnit in unitsDescending {
+            let convertedValue = self.converted(to: targetUnit)
+            if convertedValue >= 1 {
+                return Volume(value: convertedValue, unit: targetUnit)
+            }
+        }
+        return Volume(value: self.converted(to: .ml), unit: .ml)
+    }
+
     static func +(lhs: Volume, rhs: Volume) -> Volume {
         let total = lhs.inBaseUnit + rhs.inBaseUnit
-        let result = Volume()
-        result.value = total / Self.exchangeRate(from: .l, to: lhs.unit)
-        result.unit = lhs.unit
-        return result
+        return Volume(value: total, unit: .l)
     }
 
     static func -(lhs: Volume, rhs: Volume) -> Volume {
         let diff = lhs.inBaseUnit - rhs.inBaseUnit
-        let result = Volume()
-        result.value = diff / Self.exchangeRate(from: .l, to: lhs.unit)
-        result.unit = lhs.unit
-        return result
+        return Volume(value: diff, unit: .l)
     }
 
     static func <(lhs: Volume, rhs: Volume) -> Bool {
