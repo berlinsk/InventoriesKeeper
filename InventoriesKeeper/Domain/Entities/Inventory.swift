@@ -92,9 +92,13 @@ final class Inventory: InventoryProtocol {
     var totalMoneyAmount: Currency { model.totalMoneyAmount }
     var totalValue: Currency { model.totalValue }
 
-    func add(object: GameObject) throws {}
+    func add(object: GameObject) throws {
+        try TransferService.shared.add(object: object, to: self)
+    }
 
-    func remove(object: GameObject) throws {}
+    func remove(object: GameObject) throws {
+        try TransferService.shared.remove(object: object, from: self)
+    }
 
     func canAccept(object: GameObject) -> Bool {
         guard let objWeight = object.weight else { return true }
