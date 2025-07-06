@@ -16,7 +16,7 @@ struct InventoriesKeeperApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            MainMenuView()
         }
     }
 }
