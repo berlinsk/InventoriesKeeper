@@ -12,6 +12,11 @@ final class Item: ItemProtocol {
     let model: RItem
 
     init(model: RItem) { self.model = model }
+    
+    init(kind: ItemKind, name: String, ownerId: ObjectId) {
+        let rItem = SeedFactory.makeItem(kind: kind, name: name, ownerId: ownerId)
+        self.model = rItem
+    }
 
     var id: ObjectId { model.id }
 

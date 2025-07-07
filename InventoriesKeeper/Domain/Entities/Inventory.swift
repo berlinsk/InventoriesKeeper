@@ -99,11 +99,66 @@ final class Inventory: InventoryProtocol {
     func remove(object: GameObject) throws {
         try TransferService.shared.remove(object: object, from: self)
     }
+    
+    func deleteRecursively() throws {
+        guard let realm = model.realm else { return }
+        try realm.write {
+            TransferService.shared.deleteInventoryRecursively(model, in: realm)
+        }
+    }
 
     func canAccept(object: GameObject) -> Bool {
         guard let objWeight = object.weight else { return true }
         guard let max = maxCarryWeight else { return true }
         let newTotal = model.totalWeight + objWeight
         return newTotal.inBaseUnit <= max.inBaseUnit
+    }
+}
+
+extension Inventory {
+    static func createRoot(kind: InventoryKind, name: String) -> Inventory {
+        let realm = try! Realm()
+        var newInv: RInventory!
+        try! realm.write {
+            newInv = SeedFactory.makeInventory(kind: kind, name: name)
+            realm.add(newInv)
+        }
+        return Inventory(model: newInv)
+    }
+    
+    static func createChild(kind: InventoryKind, name: String, ownerId: ObjectId) -> Inventory {
+        let realm = try! Realm()
+        var newInv: RInventory!
+        try! realm.write {
+            newInv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: ownerId)
+            realm.add(newInv)
+        }
+        return Inventory(model: newInv)
+    }
+    
+    static func findOrCreateRoot(kind: InventoryKind, name: String) -> Inventory {
+        let realm = try! Realm()
+        if let existing = realm.objects(RInventory.self).filter("kind == %@", kind.rawValue).first {
+            return Inventory(model: existing)
+        } else {
+            return Inventory.createRoot(kind: kind, name: name)
+        }
+    }
+    
+    static func getAllRoots() -> [Inventory] {
+        let realm = try! Realm()
+        return realm.objects(RInventory.self)
+            .filter("common.ownerId == id")
+            .map { Inventory(model: $0) }
+    }
+
+    static func findRoot(kind: InventoryKind) -> Inventory? {
+        let realm = try! Realm()
+        if let existing = realm.objects(RInventory.self)
+            .filter("kind == %@ AND common.ownerId == id", kind.rawValue)
+            .first {
+            return Inventory(model: existing)
+        }
+        return nil
     }
 }

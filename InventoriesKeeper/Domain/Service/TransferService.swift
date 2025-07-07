@@ -62,12 +62,20 @@ final class TransferService {
                 if let idx = live.inventories.firstIndex(where: { $0.id == inv.model.id }) {
                     let toDelete = live.inventories[idx]
                     live.inventories.remove(at: idx)
-                    realm.delete(toDelete)
+                    deleteInventoryRecursively(toDelete, in: realm)
                 } else {
                     throw TransferError.notFound
                 }
             }
         }
+    }
+    
+    func deleteInventoryRecursively(_ inventory: RInventory, in realm: Realm) {
+        for childInv in inventory.inventories {
+            deleteInventoryRecursively(childInv, in: realm)
+        }
+        realm.delete(inventory.items)
+        realm.delete(inventory)
     }
 
     private func isCycle(source: RInventory, target: RInventory) -> Bool {

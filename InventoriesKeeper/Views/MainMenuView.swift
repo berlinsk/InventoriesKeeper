@@ -9,50 +9,51 @@ import SwiftUI
 import RealmSwift
 
 struct MainMenuView: View {
-    @ObservedResults(RInventory.self) var allInventories
-
     @State private var path = NavigationPath()
-    @State private var worldInventory: RInventory?
-    @State private var heroInventory: RInventory?
+    @State private var rootInventories: [Inventory] = []
+    @State private var worldInventory: Inventory?
+    @State private var heroInventory: Inventory?
+    
+    // for test
+    private var inventoryHierarchyDump: String {
+        rootInventories
+            .map { inventoryHierarchyString(for: $0.model) }
+            .joined()
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 20) {
                 Button("Global Inv") {
-                    let realm = try! Realm()
-                    if let existing = realm.objects(RInventory.self).filter("kind == %@", InventoryKind.location.rawValue).first {
-                        worldInventory = existing
-                        path.append(existing)
+                    if let inv = Inventory.findRoot(kind: .location) {
+                        worldInventory = inv
+                        path.append(inv.model)
                     } else {
-                        try! realm.write {
-                            let inv = SeedFactory.makeInventory(kind: .location, name: "Global inv")
-                            realm.add(inv)
-                            worldInventory = inv
-                            path.append(inv)
-                        }
+                        let inv = Inventory.createRoot(kind: .location, name: "Global inv")
+                        worldInventory = inv
+                        path.append(inv.model)
+                        rootInventories = Inventory.getAllRoots()
                     }
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button("Main character") {
-                    let realm = try! Realm()
-                    if let existing = realm.objects(RInventory.self).filter("kind == %@", InventoryKind.character.rawValue).first {
-                        heroInventory = existing
-                        path.append(existing)
+                    if let inv = Inventory.findRoot(kind: .character) {
+                        heroInventory = inv
+                        path.append(inv.model)
                     } else {
-                        try! realm.write {
-                            let inv = SeedFactory.makeInventory(kind: .character, name: "Main character")
-                            realm.add(inv)
-                            heroInventory = inv
-                            path.append(inv)
-                        }
+                        let inv = Inventory.createRoot(kind: .character, name: "Main character")
+                        heroInventory = inv
+                        path.append(inv.model)
+                        rootInventories = Inventory.getAllRoots()
                     }
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button("+ Add root inv") {
-                    let inv = SeedFactory.addRootInventory()
-                    path.append(inv)
+                    let inv = Inventory.createRoot(kind: .generic, name: "Root \(Int.random(in: 1...999))")
+                    rootInventories = Inventory.getAllRoots()
+                    path.append(inv.model)
                 }
                 .buttonStyle(.bordered)
 
@@ -62,61 +63,47 @@ struct MainMenuView: View {
                     .font(.headline)
 
                 List {
-                    ForEach(allInventories) { inv in
-                        Button(inv.common?.name ?? "Unnamed root") {
-                            path.append(inv)
+                    ForEach(rootInventories, id: \.id) { inv in
+                        Button(inv.name) {
+                            path.append(inv.model)
                         }
                     }
                     .onDelete { indexSet in
-                        let realm = try! Realm()
-                        try! realm.write {
-                            indexSet.forEach { index in
-                                let inv = allInventories[index]
-                                if let liveInv = inv.thaw() {
-                                    realm.delete(liveInv)
-                                }
-                            }
+                        indexSet.forEach { index in
+                            let inv = rootInventories[index]
+                            try? inv.deleteRecursively()
                         }
+                        rootInventories = Inventory.getAllRoots()
                     }
                 }
                 .frame(height: 300)
+                
+                // for test
+                ScrollView {
+                    Text(inventoryHierarchyDump)
+                        .font(.system(size: 12, weight: .regular, design: .monospaced))
+                        .padding()
+                }
+                .frame(maxHeight: 300)
             }
             .padding()
-            .navigationTitle("Menu")
             .onAppear {
-                setupRootInventoriesIfNeeded()
+                rootInventories = Inventory.getAllRoots()
             }
+            .navigationTitle("Menu")
             .navigationDestination(for: RInventory.self) { rInv in
                 InventoryDomainView(invModel: rInv)
             }
         }
     }
-
-    private func setupRootInventoriesIfNeeded() {
-        let realm = try! Realm()
-
-        if worldInventory == nil {
-            if let existing = realm.objects(RInventory.self).filter("kind == %@", InventoryKind.location.rawValue).first {
-                worldInventory = existing
-            } else {
-                try! realm.write {
-                    let inv = SeedFactory.makeInventory(kind: .location, name: "Global inv")
-                    realm.add(inv)
-                    worldInventory = inv
-                }
-            }
+    
+    // for test
+    private func inventoryHierarchyString(for inventory: RInventory, indent: Int = 0) -> String {
+        let indentString = String(repeating: "  ", count: indent)
+        var result = "\(indentString)• \(inventory.common?.name ?? "Unnamed") [\(inventory.kind.rawValue)]\n"
+        for child in inventory.inventories {
+            result += inventoryHierarchyString(for: child, indent: indent + 1)
         }
-
-        if heroInventory == nil {
-            if let existing = realm.objects(RInventory.self).filter("kind == %@", InventoryKind.character.rawValue).first {
-                heroInventory = existing
-            } else {
-                try! realm.write {
-                    let inv = SeedFactory.makeInventory(kind: .character, name: "Main character")
-                    realm.add(inv)
-                    heroInventory = inv
-                }
-            }
-        }
+        return result
     }
 }

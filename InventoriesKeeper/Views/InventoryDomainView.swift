@@ -54,9 +54,8 @@ struct AlertText: Identifiable {
 struct InventoryDomainView: View {
     @ObservedRealmObject var invModel: RInventory
     private var inventory: Inventory { Inventory(model: invModel) }
-
     @State private var errorText: AlertText?
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Tot. weight: \(inventory.totalWeight.value, specifier: "%.2f") \(inventory.totalWeight.unit.rawValue)")
@@ -65,14 +64,14 @@ struct InventoryDomainView: View {
 
             List {
                 Section("Items") {
-                    ForEach(invModel.items) { rItem in
+                    ForEach(inventory.items, id: \.id) { rItem in
                         Text("\(rItem.common?.name ?? "Unnamed") | \(rItem.kind.rawValue)")
                     }
                     .onDelete { idx in delete(at: idx, isItem: true) }
                 }
 
                 Section("Inventories") {
-                    ForEach(invModel.inventories) { rInv in
+                    ForEach(inventory.inventories, id: \.id) { rInv in
                         NavigationLink(destination: InventoryDomainView(invModel: rInv)) {
                             Text(rInv.common?.name ?? "Unnamed") +
                             Text(" | \(rInv.kind.rawValue)")
@@ -82,16 +81,16 @@ struct InventoryDomainView: View {
                 }
 
                 Section {
-                    Button("Add food itm"){
+                    Button("Add food item"){
                         addItem(kind: .food, name: "apple")
                     }
-                    Button("Add book itm"){
+                    Button("Add liquid item"){
                         addItem(kind: .liquid, name: "water")
                     }
-                    Button("Add weapon itm"){
+                    Button("Add weapon item"){
                         addItem(kind: .weapon, name: "ar4")
                     }
-                    Button("Add book itm"){
+                    Button("Add book item"){
                         addItem(kind: .book, name: "book")
                     }
                     Divider()
@@ -99,27 +98,23 @@ struct InventoryDomainView: View {
                         addInventory(kind: .character, name: "npc")
                     }
                     Button("Add location inv"){
-                        addInventory(kind: .location,  name: "cave")
+                        addInventory(kind: .location, name: "cave")
                     }
                     Button("Add vehicle inv"){
-                        addInventory(kind: .vehicle,   name: "car")
+                        addInventory(kind: .vehicle, name: "car")
                     }
                 }
             }
             .alert(item: $errorText) { alert in
                 Alert(title: Text(alert.text))
             }
-            .navigationTitle(invModel.common?.name ?? "inventory")
-            .alert(item: $errorText) { alert in
-                Alert(title: Text(alert.text))
-            }
+            .navigationTitle(inventory.name)
         }
-        .navigationTitle(invModel.common?.name ?? "inventory")
+        .navigationTitle(inventory.name)
     }
 
     private func addItem(kind: ItemKind, name: String) {
-        let rItem = SeedFactory.makeItem(kind: kind, name: name, ownerId: invModel.id)
-        let item  = Item(model: rItem)
+        let item = Item(kind: kind, name: name, ownerId: inventory.id)
         DispatchQueue.main.async {
             do {
                 try inventory.add(object: item)
@@ -130,8 +125,7 @@ struct InventoryDomainView: View {
     }
 
     private func addInventory(kind: InventoryKind, name: String) {
-        let rInv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: invModel.id)
-        let inv  = Inventory(model: rInv)
+        let inv = Inventory.createChild(kind: kind, name: name, ownerId: inventory.id)
         DispatchQueue.main.async {
             do {
                 try inventory.add(object: inv)
@@ -144,15 +138,14 @@ struct InventoryDomainView: View {
     private func delete(at indexSet: IndexSet, isItem: Bool) {
         for idx in indexSet {
             if isItem {
-                let rItem = invModel.items[idx]
+                let rItem = inventory.items[idx]
                 do { try inventory.remove(object: Item(model: rItem)) }
                 catch { errorText = AlertText(text: error.localizedDescription) }
             } else {
-                let rInv = invModel.inventories[idx]
+                let rInv = inventory.inventories[idx]
                 do { try inventory.remove(object: Inventory(model: rInv)) }
                 catch { errorText = AlertText(text: error.localizedDescription) }
             }
         }
     }
-
 }
