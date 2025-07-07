@@ -40,6 +40,7 @@ final class TransferService {
                 if !inventory.canAccept(object: inv) { throw TransferError.capacityExceeded }
                 live.inventories.append(inv.model)
             }
+            live.updateCachedValuesRecursively()
         }
     }
 
@@ -67,6 +68,7 @@ final class TransferService {
                     throw TransferError.notFound
                 }
             }
+            live.updateCachedValuesRecursively()
         }
     }
     

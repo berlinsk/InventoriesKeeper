@@ -87,10 +87,21 @@ final class Inventory: InventoryProtocol {
     var items: List<RItem> { model.items }
     var inventories: List<RInventory> { model.inventories }
 
-    var totalWeight: Weight { model.totalWeight }
-    var totalPersonalValue: Currency { model.totalPersonalValue }
-    var totalMoneyAmount: Currency { model.totalMoneyAmount }
-    var totalValue: Currency { model.totalValue }
+    var totalWeight: Weight {
+        Weight(value: model.cachedTotalWeight, unit: .kg)
+    }
+
+    var totalPersonalValue: Currency {
+        Currency(value: model.cachedTotalPersonalValue, unit: .currency1)
+    }
+
+    var totalMoneyAmount: Currency {
+        Currency(value: model.cachedTotalMoneyAmount, unit: .currency1)
+    }
+
+    var totalValue: Currency {
+        Currency(value: model.cachedTotalValue, unit: .currency1)
+    }
 
     func add(object: GameObject) throws {
         try TransferService.shared.add(object: object, to: self)
@@ -110,7 +121,7 @@ final class Inventory: InventoryProtocol {
     func canAccept(object: GameObject) -> Bool {
         guard let objWeight = object.weight else { return true }
         guard let max = maxCarryWeight else { return true }
-        let newTotal = model.totalWeight + objWeight
+        let newTotal = totalWeight + objWeight
         return newTotal.inBaseUnit <= max.inBaseUnit
     }
 }
@@ -122,6 +133,7 @@ extension Inventory {
         try! realm.write {
             newInv = SeedFactory.makeInventory(kind: kind, name: name)
             realm.add(newInv)
+            newInv.updateCachedValuesRecursively()
         }
         return Inventory(model: newInv)
     }
@@ -132,6 +144,7 @@ extension Inventory {
         try! realm.write {
             newInv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: ownerId)
             realm.add(newInv)
+            newInv.updateCachedValuesRecursively()
         }
         return Inventory(model: newInv)
     }
