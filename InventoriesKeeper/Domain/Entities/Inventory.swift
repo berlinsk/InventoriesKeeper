@@ -104,11 +104,13 @@ final class Inventory: InventoryProtocol {
     }
 
     func add(object: GameObject) throws {
-        try TransferService.shared.add(object: object, to: self)
+        let realm = try Realm()
+        try TransferService.shared.add(object: object, to: self, in: realm)
     }
 
     func remove(object: GameObject) throws {
-        try TransferService.shared.remove(object: object, from: self)
+        let realm = try Realm()
+        try TransferService.shared.remove(object: object, from: self, in: realm)
     }
     
     func deleteRecursively() throws {

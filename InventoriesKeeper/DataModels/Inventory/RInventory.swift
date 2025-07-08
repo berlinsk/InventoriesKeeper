@@ -97,6 +97,11 @@ class RInventory: Object, ObjectKeyIdentifiable {
 }
 
 extension RInventory {
+    func isAncestor(of descendant: RInventory) -> Bool {
+        if inventories.contains(descendant) { return true }
+        return inventories.contains { $0.isAncestor(of: descendant) }
+    }
+    
     func updateCachedValuesRecursively() {
         guard let realm = self.realm else { return }
         

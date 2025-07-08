@@ -55,6 +55,9 @@ struct InventoryDomainView: View {
     @ObservedRealmObject var invModel: RInventory
     private var inventory: Inventory { Inventory(model: invModel) }
     @State private var errorText: AlertText?
+    @State private var selection: Set<ObjectId> = []
+    @State private var showPicker = false
+    @Environment(\.editMode) private var editMode
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -62,7 +65,7 @@ struct InventoryDomainView: View {
                 .font(.subheadline)
                 .padding(.horizontal)
 
-            List {
+            List(selection: $selection) {
                 Section("Items") {
                     ForEach(inventory.items, id: \.id) { rItem in
                         Text("\(rItem.common?.name ?? "Unnamed") | \(rItem.kind.rawValue)")
@@ -111,6 +114,25 @@ struct InventoryDomainView: View {
             .navigationTitle(inventory.name)
         }
         .navigationTitle(inventory.name)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                EditButton()
+            }
+            ToolbarItem(placement: .bottomBar) {
+                if editMode?.wrappedValue.isEditing == true {
+                    Button("Move Selected") {
+                        showPicker = true
+                    }
+                    .disabled(selection.isEmpty)
+                }
+            }
+        }
+        .sheet(isPresented: $showPicker) {
+            InventoryPickerView { destinationInventory in
+                moveSelected(to: destinationInventory)
+                showPicker = false
+            }
+        }
     }
 
     private func addItem(kind: ItemKind, name: String) {
@@ -129,6 +151,25 @@ struct InventoryDomainView: View {
         DispatchQueue.main.async {
             do {
                 try inventory.add(object: inv)
+            } catch {
+                errorText = AlertText(text: error.localizedDescription)
+            }
+        }
+    }
+    
+    private func moveSelected(to destination: Inventory) {
+        DispatchQueue.main.async {
+            do {
+                let destId = destination.id
+                for id in selection {
+                    if inventory.items.contains(where: { $0.id == id }) {
+                        try TransferService.shared.moveItem(withId: id, to: destId)
+                    }
+                    else if inventory.inventories.contains(where: { $0.id == id }) {
+                        try TransferService.shared.moveInventory(withId: id, to: destId)
+                    }
+                }
+                selection.removeAll()
             } catch {
                 errorText = AlertText(text: error.localizedDescription)
             }
