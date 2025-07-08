@@ -128,10 +128,13 @@ struct InventoryDomainView: View {
             }
         }
         .sheet(isPresented: $showPicker) {
-            InventoryPickerView { destinationInventory in
-                moveSelected(to: destinationInventory)
-                showPicker = false
-            }
+            InventoryPickerView(
+                onSelect: { destinationInventory in
+                    moveSelected(to: destinationInventory)
+                    showPicker = false
+                },
+                excludedIds: computeExcludedIds()
+            )
         }
     }
 
@@ -170,9 +173,28 @@ struct InventoryDomainView: View {
                     }
                 }
                 selection.removeAll()
+                editMode?.animation().wrappedValue = .inactive
             } catch {
                 errorText = AlertText(text: error.localizedDescription)
             }
+        }
+    }
+    
+    private func computeExcludedIds() -> Set<ObjectId> {
+        var excluded: Set<ObjectId> = []
+        for id in selection {
+            if let rInv = inventory.inventories.first(where: { $0.id == id }) {
+                excluded.insert(rInv.id)
+                collectChildIds(of: rInv, into: &excluded)
+            }
+        }
+        return excluded
+    }
+
+    private func collectChildIds(of inventory: RInventory, into set: inout Set<ObjectId>) {
+        for child in inventory.inventories {
+            set.insert(child.id)
+            collectChildIds(of: child, into: &set)
         }
     }
 
