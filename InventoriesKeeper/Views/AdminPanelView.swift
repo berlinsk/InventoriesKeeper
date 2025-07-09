@@ -12,41 +12,38 @@ struct AdminPanelView: View {
     @State private var users: [String] = []
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
-                ForEach(users, id: \.self) { user in
-                    Text(user)
+                ForEach(users, id: \.self) { name in
+                    Text(name)
                 }
-                .onDelete(perform: deleteUser)
-            }
-            .navigationTitle("Admin Panel")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Logout") {
-                        session.logout()
+                .onDelete { idx in
+                    idx.forEach { i in
+                        deleteUser(named: users[i])
                     }
+                    users = fetchUsers()
                 }
             }
+            .navigationTitle("Users")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Logout") { session.logout() }
+                }
+            }
+            .onAppear { users = fetchUsers() }
         }
-        .onAppear(perform: loadUsers)
     }
 
-    private func loadUsers() {
-        let defaults = UserDefaults.standard
-        users = defaults.dictionaryRepresentation().keys
-            .filter { $0.hasPrefix("user_") && $0.hasSuffix("_password") }
-            .map { $0.replacingOccurrences(of: "user_", with: "").replacingOccurrences(of: "_password", with: "") }
+    private func fetchUsers() -> [String] {
+        UserDefaults.standard.dictionaryRepresentation().keys
+            .compactMap { $0.hasPrefix("user_") ? $0.replacingOccurrences(of: "user_", with: "").replacingOccurrences(of: "_password", with: "") : nil }
+            .sorted()
     }
 
-    private func deleteUser(at offsets: IndexSet) {
+    private func deleteUser(named user: String) {
         let defaults = UserDefaults.standard
-        for index in offsets {
-            let user = users[index]
-            let key = "user_\(user)_password"
-            defaults.removeObject(forKey: key)
-            let fileURL = FileManager.documentsURL.appendingPathComponent("\(user).realm")
-            FileManager.default.removeItemIfExists(at: fileURL)
-        }
-        loadUsers()
+        defaults.removeObject(forKey: "user_\(user)_password")
+        let url = FileManager.documentsURL.appendingPathComponent("\(user).realm")
+        FileManager.default.removeItemIfExists(at: url)
     }
 }
