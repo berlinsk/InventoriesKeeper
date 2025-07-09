@@ -22,6 +22,7 @@ enum RealmConfig {
             inMemoryIdentifier: inMemoryIdentifier,
             deleteRealmIfMigrationNeeded: true,
             objectTypes: objectTypes ?? [
+                RUser.self,
                 RGame.self,
                 RItem.self,
                 RInventory.self,
@@ -51,6 +52,7 @@ enum RealmConfig {
             fileURL: fileURL,
             deleteRealmIfMigrationNeeded: true,
             objectTypes: [
+                RUser.self,
                 RGame.self,
                 RItem.self,
                 RInventory.self,

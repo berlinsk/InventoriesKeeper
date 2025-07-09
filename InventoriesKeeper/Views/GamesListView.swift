@@ -25,7 +25,9 @@ struct GamesListView: View {
                     idx.forEach { i in
                         try? GameRepository.delete(game: games[i])
                     }
-                    games = GameRepository.allGames()
+                    if let user = session.currentUser() {
+                        games = GameRepository.allGames(for: user)
+                    }
                 }
             }
             .navigationTitle("Your Games")
@@ -41,12 +43,20 @@ struct GamesListView: View {
                     Button("+") { showAdd = true }
                 }
             }
-            .onAppear { games = GameRepository.allGames() }
+            .onAppear {
+                if let user = session.currentUser() {
+                    games = GameRepository.allGames(for: user)
+                }
+            }
             .sheet(isPresented: $showAdd) {
-                AddGameView(onDone: {
-                    games = GameRepository.allGames()
-                    showAdd = false
-                })
+                if let user = session.currentUser() {
+                    AddGameView(user: user, onDone: {
+                        games = GameRepository.allGames(for: user)
+                        showAdd = false
+                    })
+                } else {
+                    Text("User not found")
+                }
             }
         }
     }

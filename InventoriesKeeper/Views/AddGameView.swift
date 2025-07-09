@@ -12,6 +12,7 @@ struct AddGameView: View {
     @State private var title = ""
     @State private var details = ""
     @State private var isPublic = false
+    let user: RUser
     let onDone: () -> Void
 
     var body: some View {
@@ -27,9 +28,12 @@ struct AddGameView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        _ = GameRepository.createGame(title: title,
-                                                      details: details.isEmpty ? nil : details,
-                                                      isPublic: isPublic)
+                        _ = GameRepository.createGame(
+                            title: title,
+                            details: details.isEmpty ? nil : details,
+                            isPublic: isPublic,
+                            for: user
+                        )
                         onDone()
                     }.disabled(title.isEmpty)
                 }
