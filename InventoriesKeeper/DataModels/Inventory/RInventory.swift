@@ -53,6 +53,10 @@ class RInventory: Object, ObjectKeyIdentifiable {
     @Persisted var vehicleDetails: VehicleInventoryDetails?
     @Persisted var items = List<RItem>()
     @Persisted var inventories = List<RInventory>()
+    @Persisted var cachedTotalWeight: Double
+    @Persisted var cachedTotalPersonalValue: Double
+    @Persisted var cachedTotalMoneyAmount: Double
+    @Persisted var cachedTotalValue: Double
     var totalWeight: Weight {
         let childItemsWeight = items.reduce(Weight(value: 0, unit: WeightUnit.kg)) { sum, item in
             if let weight = item.common?.weight {
@@ -90,4 +94,38 @@ class RInventory: Object, ObjectKeyIdentifiable {
         totalPersonalValue + totalMoneyAmount
     }
 
+}
+
+extension RInventory {
+    func isAncestor(of descendant: RInventory) -> Bool {
+        if inventories.contains(descendant) { return true }
+        return inventories.contains { $0.isAncestor(of: descendant) }
+    }
+    
+    func updateCachedValuesRecursively() {
+        guard let realm = self.realm else { return }
+        
+        let itemWeight = items.reduce(0.0) { $0 + ($1.common?.weight?.value ?? 0) }
+        let childWeight = inventories.reduce(0.0) { $0 + $1.cachedTotalWeight }
+        let selfWeight = common?.weight?.value ?? 0
+        cachedTotalWeight = selfWeight + itemWeight + childWeight
+
+        let itemValue = items.reduce(0.0) { $0 + ($1.common?.personalValue?.value ?? 0) }
+        let childValue = inventories.reduce(0.0) { $0 + $1.cachedTotalPersonalValue }
+        let selfValue = common?.personalValue?.value ?? 0
+        cachedTotalPersonalValue = selfValue + itemValue + childValue
+
+        let itemMoney = items.reduce(0.0) { $0 + ($1.common?.moneyAmount?.value ?? 0) }
+        let childMoney = inventories.reduce(0.0) { $0 + $1.cachedTotalMoneyAmount }
+        let selfMoney = common?.moneyAmount?.value ?? 0
+        cachedTotalMoneyAmount = selfMoney + itemMoney + childMoney
+
+        cachedTotalValue = cachedTotalPersonalValue + cachedTotalMoneyAmount
+
+        if let ownerId = common?.ownerId,
+           let parent = realm.object(ofType: RInventory.self, forPrimaryKey: ownerId),
+           parent.id != self.id {
+            parent.updateCachedValuesRecursively()
+        }
+    }
 }
