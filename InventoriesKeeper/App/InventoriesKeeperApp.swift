@@ -23,7 +23,7 @@ struct InventoriesKeeperApp: App {
                     AdminPanelView()
                         .environmentObject(session)
                 } else {
-                    MainMenuView()
+                    GamesListView()
                         .environmentObject(session)
                 }
             } else {

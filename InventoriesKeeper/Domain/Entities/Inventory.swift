@@ -114,9 +114,12 @@ final class Inventory: InventoryProtocol {
     }
     
     func deleteRecursively() throws {
-        guard let realm = model.realm else { return }
+        let realm = try Realm()
+        guard let managed = realm.object(ofType: RInventory.self, forPrimaryKey: model.id) else {
+            return
+        }
         try realm.write {
-            TransferService.shared.deleteInventoryRecursively(model, in: realm)
+            TransferService.shared.deleteInventoryRecursively(managed, in: realm)
         }
     }
 
