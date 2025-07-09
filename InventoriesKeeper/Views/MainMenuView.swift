@@ -9,6 +9,7 @@ import SwiftUI
 import RealmSwift
 
 struct MainMenuView: View {
+    @EnvironmentObject var session: UserSession
     @State private var path = NavigationPath()
     @State private var rootInventories: [Inventory] = []
     @State private var worldInventory: Inventory?
@@ -24,6 +25,11 @@ struct MainMenuView: View {
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 20) {
+                Button("Logout") {
+                    session.logout()
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
                 Button("Global Inv") {
                     if let inv = Inventory.findRoot(kind: .location) {
                         worldInventory = inv

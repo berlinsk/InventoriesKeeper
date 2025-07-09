@@ -9,14 +9,22 @@ import SwiftUI
 
 @main
 struct InventoriesKeeperApp: App {
+    @StateObject private var session = UserSession()
+    
     init() {
 //        RealmConfig.configure()
-        RealmConfig.configure(resetOnLaunch: true)
+//        RealmConfig.configure(resetOnLaunch: true)
     }
 
     var body: some Scene {
         WindowGroup {
-            MainMenuView()
+            if session.isLoggedIn {
+                MainMenuView()
+                    .environmentObject(session)
+            } else {
+                LoginView()
+                    .environmentObject(session)
+            }
         }
     }
 }
