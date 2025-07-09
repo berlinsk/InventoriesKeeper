@@ -11,22 +11,33 @@ import RealmSwift
 final class UserSession: ObservableObject {
     @Published var username: String?
     @Published var isLoggedIn = false
+    @Published var isAdmin = false
     
     init() {
         if let savedUsername = UserDefaults.standard.string(forKey: "loggedInUser") {
             self.username = savedUsername
             self.isLoggedIn = true
+            self.isAdmin = (savedUsername == "admin")
             RealmConfig.configureForUser(username: savedUsername)
         }
     }
     
     func login(username: String, password: String) -> Bool {
+        if username == "admin" && password == "admin" {
+            self.username = username
+            self.isLoggedIn = true
+            self.isAdmin = true
+            UserDefaults.standard.set(username, forKey: "loggedInUser")
+            return true
+        }
+        
         let defaults = UserDefaults.standard
         let key = "user_\(username)_password"
         if let savedPassword = defaults.string(forKey: key),
            savedPassword == password {
             self.username = username
             self.isLoggedIn = true
+            self.isAdmin = false
             defaults.set(username, forKey: "loggedInUser")
             RealmConfig.configureForUser(username: username)
             return true
@@ -41,6 +52,7 @@ final class UserSession: ObservableObject {
             defaults.set(password, forKey: key)
             self.username = username
             self.isLoggedIn = true
+            self.isAdmin = false
             defaults.set(username, forKey: "loggedInUser")
             RealmConfig.configureForUser(username: username)
             return true
@@ -51,6 +63,7 @@ final class UserSession: ObservableObject {
     func logout() {
         self.username = nil
         self.isLoggedIn = false
+        self.isAdmin = false
         UserDefaults.standard.removeObject(forKey: "loggedInUser")
     }
 }

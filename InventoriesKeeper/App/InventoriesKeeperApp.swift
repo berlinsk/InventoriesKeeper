@@ -19,8 +19,13 @@ struct InventoriesKeeperApp: App {
     var body: some Scene {
         WindowGroup {
             if session.isLoggedIn {
-                MainMenuView()
-                    .environmentObject(session)
+                if session.isAdmin {
+                    AdminPanelView()
+                        .environmentObject(session)
+                } else {
+                    MainMenuView()
+                        .environmentObject(session)
+                }
             } else {
                 LoginView()
                     .environmentObject(session)
