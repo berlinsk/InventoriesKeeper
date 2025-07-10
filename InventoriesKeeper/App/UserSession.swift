@@ -16,6 +16,20 @@ final class UserSession: ObservableObject {
     
     init() {
         let realm = try! Realm()
+        
+        if realm.objects(RUser.self).filter("username == 'admin'").first == nil {
+            let admin = RUser()
+            admin.id = .generate()
+            admin.username = "admin"
+            admin.password = "admin"
+            admin.isAdmin = true
+            admin.isLoggedIn = false
+
+            try! realm.write {
+                realm.add(admin)
+            }
+        }
+
         if let existingUser = realm.objects(RUser.self).filter("isLoggedIn == true").first {
             self.user = existingUser
             self.username = existingUser.username
