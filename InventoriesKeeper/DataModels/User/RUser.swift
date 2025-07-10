@@ -13,6 +13,7 @@ class RUser: Object, ObjectKeyIdentifiable {
     @Persisted var username: String
     @Persisted var password: String
     @Persisted var isAdmin: Bool
+    @Persisted var isLoggedIn: Bool = false
 
     @Persisted var games = List<RGame>()
 }

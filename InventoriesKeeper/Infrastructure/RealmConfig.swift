@@ -45,33 +45,4 @@ enum RealmConfig {
         Realm.Configuration.defaultConfiguration = config
         _ = try? Realm()
     }
-    
-    static func configureForUser(username: String) {
-        let fileURL = FileManager.documentsURL.appendingPathComponent("\(username).realm")
-        let config = Realm.Configuration(
-            fileURL: fileURL,
-            deleteRealmIfMigrationNeeded: true,
-            objectTypes: [
-                RUser.self,
-                RGame.self,
-                RItem.self,
-                RInventory.self,
-                ItemInventoryCommonFields.self,
-                FoodItemDetails.self,
-                LiquidItemDetails.self,
-                BookItemDetails.self,
-                WeaponItemDetails.self,
-                CharacterInventoryDetails.self,
-                LocationInventoryDetails.self,
-                VehicleInventoryDetails.self,
-                Weight.self,
-                Currency.self,
-                Volume.self,
-                Calorie.self,
-                GameDate.self
-            ]
-        )
-        Realm.Configuration.defaultConfiguration = config
-        _ = try? Realm()
-    }
 }

@@ -26,18 +26,16 @@ struct LoginView: View {
             }
             
             Button("Login") {
-                if session.login(username: username, password: password) {
-                    RealmConfig.configureForUser(username: username)
-                } else {
+                let success = session.login(username: username, password: password)
+                if !success {
                     errorText = "Invalid credentials"
                 }
             }
             .buttonStyle(.borderedProminent)
             
             Button("Register") {
-                if session.register(username: username, password: password) {
-                    RealmConfig.configureForUser(username: username)
-                } else {
+                let success = session.register(username: username, password: password)
+                if !success {
                     errorText = "User already exists"
                 }
             }
