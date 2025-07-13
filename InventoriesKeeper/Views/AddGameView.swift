@@ -12,7 +12,7 @@ struct AddGameView: View {
     @State private var title = ""
     @State private var details = ""
     @State private var isPublic = false
-    let user: RUser
+    let user: User
     let onDone: () -> Void
 
     var body: some View {

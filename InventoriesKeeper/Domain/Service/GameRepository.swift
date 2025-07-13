@@ -8,11 +8,11 @@
 import RealmSwift
 
 enum GameRepository {
-    static func allGames(for user: RUser) -> [Game] {
-        return user.games.map(Game.init)
+    static func allGames(for user: User) -> [Game] {
+        return user.games
     }
 
-    static func createGame(title: String, details: String?, isPublic: Bool, for user: RUser) -> Game {
+    static func createGame(title: String, details: String?, isPublic: Bool, for user: User) -> Game {
         let realm = try! Realm()
         var obj: RGame!
         try! realm.write {
@@ -22,11 +22,7 @@ enum GameRepository {
             obj.details = details
             obj.isPublic = isPublic
 
-            guard let liveUser = realm.object(ofType: RUser.self, forPrimaryKey: user.id) else {
-                fatalError("User not found in current Realm")
-            }
-
-            liveUser.games.append(obj)
+            user.model.games.append(obj)
             realm.add(obj)
         }
         return Game(model: obj)

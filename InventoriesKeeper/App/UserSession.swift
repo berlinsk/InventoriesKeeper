@@ -12,7 +12,7 @@ final class UserSession: ObservableObject {
     @Published var username: String?
     @Published var isLoggedIn = false
     @Published var isAdmin = false
-    private var user: RUser?
+    var user: User?
     
     init() {
         let realm = try! Realm()
@@ -31,9 +31,10 @@ final class UserSession: ObservableObject {
         }
 
         if let existingUser = realm.objects(RUser.self).filter("isLoggedIn == true").first {
-            self.user = existingUser
-            self.username = existingUser.username
-            self.isAdmin = existingUser.isAdmin
+            let wrappedUser = User(model: existingUser)
+            self.user = wrappedUser
+            self.username = wrappedUser.username
+            self.isAdmin = wrappedUser.isAdmin
             self.isLoggedIn = true
         }
     }
@@ -52,9 +53,10 @@ final class UserSession: ObservableObject {
             existingUser.isLoggedIn = true
         }
 
-        self.user = existingUser
-        self.username = existingUser.username
-        self.isAdmin = existingUser.isAdmin
+        let wrappedUser = User(model: existingUser)
+        self.user = wrappedUser
+        self.username = wrappedUser.username
+        self.isAdmin = wrappedUser.isAdmin
         self.isLoggedIn = true
         return true
     }
@@ -79,27 +81,56 @@ final class UserSession: ObservableObject {
             realm.add(newUser)
         }
 
-        self.user = newUser
-        self.username = newUser.username
-        self.isAdmin = newUser.isAdmin
+        let wrappedUser = User(model: newUser)
+        self.user = wrappedUser
+        self.username = wrappedUser.username
+        self.isAdmin = wrappedUser.isAdmin
         self.isLoggedIn = true
         return true
     }
 
     func logout() {
-        guard let user = self.user else { return }
         let realm = try! Realm()
         try! realm.write {
-            user.isLoggedIn = false
+            realm.objects(RUser.self)
+                 .filter("isLoggedIn == true")
+                 .setValue(false, forKey: "isLoggedIn")
+        }
+        clearSession()
+    }
+
+    func deleteCurrentUser() {
+        guard let user = self.user else { return }
+        let realm = try! Realm()
+
+        let snapshot = Array(user.games)
+        for game in snapshot {
+            do {
+                try GameRepository.delete(game: game)
+            } catch {
+                print("Failed to delete game: \(error)")
+            }
         }
 
+        if let managedUser = realm.object(ofType: RUser.self, forPrimaryKey: user.id) {
+            try! realm.write {
+                realm.delete(managedUser)
+            }
+        }
         self.username = nil
         self.isLoggedIn = false
         self.isAdmin = false
         self.user = nil
     }
 
-    func currentUser() -> RUser? {
+    func currentUser() -> User? {
         return self.user
+    }
+    
+    private func clearSession() {
+        self.username = nil
+        self.isLoggedIn = false
+        self.isAdmin = false
+        self.user = nil
     }
 }

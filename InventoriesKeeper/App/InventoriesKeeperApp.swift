@@ -13,7 +13,7 @@ struct InventoriesKeeperApp: App {
     
     init() {
 //        RealmConfig.configure()
-//        RealmConfig.configure(resetOnLaunch: true)
+        RealmConfig.configure(resetOnLaunch: true)
     }
 
     var body: some Scene {

@@ -12,6 +12,12 @@ struct Game: Hashable {
     let model: RGame
 
     var id: ObjectId { model.id }
+    
+    var ownerId: ObjectId? {
+        get { model.ownerId }
+        set { model.ownerId = newValue }
+    }
+    
     var title: String {
         get { model.title }
         set { model.title = newValue }

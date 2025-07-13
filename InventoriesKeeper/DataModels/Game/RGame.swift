@@ -10,6 +10,7 @@ import RealmSwift
 
 class RGame: Object, ObjectKeyIdentifiable {
     @Persisted(primaryKey: true) var id: ObjectId
+    @Persisted var ownerId: ObjectId?
     @Persisted var title: String = ""
     @Persisted var details: String?
     @Persisted var isPublic: Bool = false
