@@ -13,21 +13,21 @@ struct InventoriesKeeperApp: App {
     
     init() {
 //        RealmConfig.configure()
-        RealmConfig.configure(resetOnLaunch: true)
+//        RealmConfig.configure(resetOnLaunch: true)
     }
 
     var body: some Scene {
         WindowGroup {
             if session.isLoggedIn {
                 if session.isAdmin {
-                    AdminPanelView()
+                    AdminPanelView(vm: AdminPanelViewModel(session: session))
                         .environmentObject(session)
                 } else {
-                    GamesListView()
+                    GamesListView(session: session)
                         .environmentObject(session)
                 }
             } else {
-                LoginView()
+                LoginView(session: session)
                     .environmentObject(session)
             }
         }

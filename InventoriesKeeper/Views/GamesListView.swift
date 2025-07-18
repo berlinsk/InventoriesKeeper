@@ -9,51 +9,51 @@ import SwiftUI
 
 struct GamesListView: View {
     @EnvironmentObject var session: UserSession
-    @State private var games: [Game] = []
-    @State private var showAdd = false
-    @State private var navPath = NavigationPath()
+    @StateObject private var vm: GamesListViewModel
+
+    init(session: UserSession? = nil) {
+        let usedSession = session ?? UserSession()
+        _vm = StateObject(wrappedValue: GamesListViewModel(session: usedSession))
+    }
 
     var body: some View {
-        NavigationStack(path: $navPath) {
+        NavigationStack(path: $vm.navPath) {
             List {
-                ForEach(games, id: \.id) { game in
+                ForEach(vm.games, id: \.id) { game in
                     NavigationLink(value: game) {
                         Text(game.title)
                     }
                 }
-                .onDelete { idx in
-                    idx.forEach { i in
-                        try? GameRepository.delete(game: games[i])
-                    }
-                    if let user = session.currentUser() {
-                        games = GameRepository.allGames(for: user)
-                    }
-                }
+                .onDelete(perform: vm.deleteGames)
             }
             .navigationTitle("Your Games")
             .navigationDestination(for: Game.self) { game in
-                MainMenuView(game: game, path: $navPath)
+                MainMenuView(game: game, session: session, path: $vm.navPath)
                     .environmentObject(session)
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Logout") { session.logout() }
+                    Button("Logout") {
+                        vm.logout()
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("+") { showAdd = true }
+                    Button("+") {
+                        vm.showAdd = true
+                    }
                 }
             }
             .onAppear {
-                if let user = session.currentUser() {
-                    games = GameRepository.allGames(for: user)
-                }
+                vm.loadGames()
             }
-            .sheet(isPresented: $showAdd) {
-                if let user = session.currentUser() {
-                    AddGameView(user: user, onDone: {
-                        games = GameRepository.allGames(for: user)
-                        showAdd = false
-                    })
+            .sheet(isPresented: $vm.showAdd) {
+                if let user = vm.currentUser() {
+                    AddGameView(
+                        vm: AddGameViewModel(user: user)
+                    ) {
+                        vm.loadGames()
+                        vm.showAdd = false
+                    }
                 } else {
                     Text("User not found")
                 }

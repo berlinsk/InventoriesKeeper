@@ -9,35 +9,33 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var session: UserSession
-    @State private var username = ""
-    @State private var password = ""
-    @State private var errorText: String?
+    @StateObject private var viewModel: LoginViewModel
+
+    init(session: UserSession? = nil) {
+        let actualSession = session ?? UserSession()
+        _viewModel = StateObject(wrappedValue: LoginViewModel(session: actualSession))
+    }
 
     var body: some View {
         VStack(spacing: 16) {
-            TextField("Username", text: $username)
+            TextField("Username", text: $viewModel.username)
                 .textFieldStyle(.roundedBorder)
-            SecureField("Password", text: $password)
+
+            SecureField("Password", text: $viewModel.password)
                 .textFieldStyle(.roundedBorder)
-            
-            if let errorText = errorText {
+
+            if let errorText = viewModel.errorText {
                 Text(errorText)
                     .foregroundColor(.red)
             }
-            
+
             Button("Login") {
-                let success = session.login(username: username, password: password)
-                if !success {
-                    errorText = "Invalid credentials"
-                }
+                viewModel.login()
             }
             .buttonStyle(.borderedProminent)
-            
+
             Button("Register") {
-                let success = session.register(username: username, password: password)
-                if !success {
-                    errorText = "User already exists"
-                }
+                viewModel.register()
             }
             .buttonStyle(.bordered)
         }

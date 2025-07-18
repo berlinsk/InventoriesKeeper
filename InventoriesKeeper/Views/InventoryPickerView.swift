@@ -9,18 +9,27 @@ import SwiftUI
 import RealmSwift
 
 struct InventoryPickerView: View {
-    @Environment(\.dismiss) var dismiss
-    let onSelect: (Inventory) -> Void
-    let excludedIds: Set<ObjectId>
-    
-    @ObservedResults(RInventory.self) var allInventories
-    
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var vm: InventoryPickerViewModel
+    @ObservedResults(RInventory.self) private var allInventories
+
+    init(excludedIds: Set<ObjectId>,
+         onSelect: @escaping (Inventory) -> Void) {
+
+        _vm = StateObject(
+            wrappedValue: InventoryPickerViewModel(
+                excludedIds: excludedIds,
+                onSelect: onSelect
+            )
+        )
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading) {
-                    ForEach(allInventories.filter { $0.common?.ownerId == $0.id && !excludedIds.contains($0.id) }, id: \.id) { rootInv in
-                        InventoryPickerNode(rInventory: rootInv, onSelect: onSelect, excludedIds: excludedIds)
+                    ForEach(vm.roots(from: allInventories), id: \.id) { root in
+                        InventoryPickerNode(rInventory : root, vm: vm)
                     }
                 }
                 .padding()
@@ -35,39 +44,30 @@ struct InventoryPickerView: View {
     }
 }
 
-struct InventoryPickerNode: View {
+private struct InventoryPickerNode: View {
     let rInventory: RInventory
-    let onSelect: (Inventory) -> Void
-    let excludedIds: Set<ObjectId>
+    @ObservedObject var vm: InventoryPickerViewModel
     @State private var expanded = false
 
     var body: some View {
-        if excludedIds.contains(rInventory.id) {
-            EmptyView()
-        } else {
-            DisclosureGroup(
-                isExpanded: $expanded,
-                content: {
-                    ForEach(rInventory.inventories.filter { !excludedIds.contains($0.id) }, id: \.id) { child in
-                        InventoryPickerNode(rInventory: child, onSelect: onSelect, excludedIds: excludedIds)
-                            .padding(.leading, 8)
-                    }
-                },
-                label: {
-                    HStack {
-                        Image(systemName: "shippingbox")
-                        Text(rInventory.common?.name ?? "Unnamed")
-                        Spacer()
-                        Button {
-                            onSelect(Inventory(model: rInventory))
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                        }
-                        .buttonStyle(BorderlessButtonStyle())
-                    }
-                    .padding(.vertical, 4)
+        DisclosureGroup(isExpanded: $expanded) {
+            ForEach(vm.children(of: rInventory), id: \.id) { child in
+                InventoryPickerNode(rInventory: child, vm: vm)
+                    .padding(.leading, 8)
+            }
+        } label: {
+            HStack {
+                Image(systemName: "shippingbox")
+                Text(rInventory.common?.name ?? "Unnamed")
+                Spacer()
+                Button {
+                    vm.onSelect(Inventory(model: rInventory))
+                } label: {
+                    Image(systemName: "checkmark.circle")
                 }
-            )
+                .buttonStyle(BorderlessButtonStyle())
+            }
+            .padding(.vertical, 4)
         }
     }
 }
