@@ -20,8 +20,8 @@ final class AdminPanelViewModel: ObservableObject {
 
     func fetchUsers() {
         let realm = try! Realm()
-        let rUsers = realm.objects(RUser.self)
-        users = rUsers.map { User(model: $0) }
+        let rUsers = realm.objects(User.self)
+        users = Array(rUsers)
     }
 
     func deleteUsers(at offsets: IndexSet) {
@@ -82,15 +82,14 @@ final class AdminPanelViewModel: ObservableObject {
         let currentId = session.currentUser()?.id
         var removedCurrent = false
 
-        let idsToDelete = realm.objects(RUser.self)
+        let idsToDelete = realm.objects(User.self)
                                .filter("username != %@", "admin")
                                .map(\.id)
 
         for id in idsToDelete {
-            if let rUser = realm.object(ofType: RUser.self, forPrimaryKey: id) {
-                let user = User(model: rUser)
+            if let rUser = realm.object(ofType: User.self, forPrimaryKey: id) {
                 if id == currentId { removedCurrent = true }
-                deleteUser(user)
+                deleteUser(rUser)
             }
         }
 

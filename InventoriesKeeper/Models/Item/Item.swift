@@ -1,5 +1,5 @@
 //
-//  RItem.swift
+//  Item.swift
 //  InventoriesKeeper
 //
 //  Created by Берлинский Ярослав Владленович on 02.07.2025.
@@ -33,7 +33,7 @@ class WeaponItemDetails: EmbeddedObject {
     @Persisted var accuracy: Double?
 }
 
-class RItem: Object, ObjectKeyIdentifiable {
+class Item: Object, ObjectKeyIdentifiable {
     @Persisted(primaryKey: true) var id: ObjectId
     @Persisted var common: ItemInventoryCommonFields?
     @Persisted var expirationDate: GameDate?

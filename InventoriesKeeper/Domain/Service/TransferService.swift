@@ -26,50 +26,69 @@ final class TransferService {
         }
     }
 
-    func add(object: GameObject, to inventory: Inventory, in realm: Realm) throws {
-        guard let live = inventory.model.thaw() else {
+    func add(item: Item, to inventory: Inventory, in realm: Realm) throws {
+        guard let live = inventory.thaw() else {
             fatalError("inventory model is no longer in realm")
         }
         try write(in: realm) {
-            if let item = object as? Item {
-                if !inventory.canAccept(object: item) { throw TransferError.capacityExceeded }
-                live.items.append(item.model)
-            } else if let inv = object as? Inventory {
-                if isCycle(source: inv.model, target: live) { throw TransferError.cyclicMove }
-                if !inventory.canAccept(object: inv) { throw TransferError.capacityExceeded }
-                live.inventories.append(inv.model)
+            if !live.canAccept(rItem: item) {
+                throw TransferError.capacityExceeded
             }
+            live.items.append(item)
             live.updateCachedValuesRecursively()
         }
     }
 
-    func remove(object: GameObject, from inventory: Inventory, in realm: Realm) throws {
-        guard let live = inventory.model.thaw() else {
+    func add(inventory child: Inventory, to inventory: Inventory, in realm: Realm) throws {
+        guard let live = inventory.thaw() else {
             fatalError("inventory model is no longer in realm")
         }
-        try realm.write {
-            if let item = object as? Item {
-                if let idx = live.items.firstIndex(where: { $0.id == item.model.id }) {
-                    let toDelete = live.items[idx]
-                    live.items.remove(at: idx)
-                    realm.delete(toDelete)
-                } else {
-                    throw TransferError.notFound
-                }
-            } else if let inv = object as? Inventory {
-                if let idx = live.inventories.firstIndex(where: { $0.id == inv.model.id }) {
-                    let toDelete = live.inventories[idx]
-                    live.inventories.remove(at: idx)
-                    deleteInventoryRecursively(toDelete, in: realm)
-                } else {
-                    throw TransferError.notFound
-                }
+        try write(in: realm) {
+            if isCycle(source: child, target: live) {
+                throw TransferError.cyclicMove
             }
+            if !live.canAccept(rInventory: child) {
+                throw TransferError.capacityExceeded
+            }
+            live.inventories.append(child)
             live.updateCachedValuesRecursively()
         }
     }
+
+    func remove(item: Item, from inventory: Inventory, in realm: Realm) throws {
+        guard let live = inventory.thaw() else {
+            fatalError("inventory model is no longer in realm")
+        }
+        try realm.write {
+            if let idx = live.items.firstIndex(where: { $0.id == item.id }) {
+                let toDelete = live.items[idx]
+                live.items.remove(at: idx)
+                realm.delete(toDelete)
+                live.updateCachedValuesRecursively()
+            } else {
+                throw TransferError.notFound
+            }
+        }
+    }
+
+    func remove(inventory child: Inventory, from inventory: Inventory, in realm: Realm) throws {
+        guard let live = inventory.thaw() else {
+            fatalError("inventory model is no longer in realm")
+        }
+        try realm.write {
+            if let idx = live.inventories.firstIndex(where: { $0.id == child.id }) {
+                let toDelete = live.inventories[idx]
+                live.inventories.remove(at: idx)
+                deleteInventoryRecursively(toDelete, in: realm)
+                live.updateCachedValuesRecursively()
+            } else {
+                throw TransferError.notFound
+            }
+        }
+    }
+
     
-    func deleteInventoryRecursively(_ inventory: RInventory, in realm: Realm) {
+    func deleteInventoryRecursively(_ inventory: Inventory, in realm: Realm) {
         for childInv in inventory.inventories {
             deleteInventoryRecursively(childInv, in: realm)
         }
@@ -80,17 +99,15 @@ final class TransferService {
     func moveItem(withId itemId: ObjectId, to targetInventoryId: ObjectId) throws {
         let realm = try Realm()
         try realm.write {
-            guard let item    = realm.object(ofType: RItem.self, forPrimaryKey: itemId),
-                  let target  = realm.object(ofType: RInventory.self, forPrimaryKey: targetInventoryId),
-                  let parent  = realm.objects(RInventory.self)
+            guard let item    = realm.object(ofType: Item.self, forPrimaryKey: itemId),
+                  let target  = realm.object(ofType: Inventory.self, forPrimaryKey: targetInventoryId),
+                  let parent  = realm.objects(Inventory.self)
                                     .first(where: { $0.items.contains(item) })
             else {
                 throw TransferError.notFound
             }
 
-            let wrapperTarget = Inventory(model: target)
-            let wrapperItem   = Item(model: item)
-            if !wrapperTarget.canAccept(object: wrapperItem) {
+            if !target.canAccept(rItem: item) {
                 throw TransferError.capacityExceeded
             }
 
@@ -107,9 +124,9 @@ final class TransferService {
     func moveInventory(withId childId: ObjectId, to targetInventoryId: ObjectId) throws {
         let realm = try Realm()
         try realm.write {
-            guard let child   = realm.object(ofType: RInventory.self, forPrimaryKey: childId),
-                  let target  = realm.object(ofType: RInventory.self, forPrimaryKey: targetInventoryId),
-                  let parent  = realm.objects(RInventory.self)
+            guard let child   = realm.object(ofType: Inventory.self, forPrimaryKey: childId),
+                  let target  = realm.object(ofType: Inventory.self, forPrimaryKey: targetInventoryId),
+                  let parent  = realm.objects(Inventory.self)
                                     .first(where: { $0.inventories.contains(child) })
             else {
                 throw TransferError.notFound
@@ -119,10 +136,12 @@ final class TransferService {
                 throw TransferError.cyclicMove
             }
 
-            let wrapperTarget = Inventory(model: target)
-            let wrapperChild  = Inventory(model: child)
-            if !wrapperTarget.canAccept(object: wrapperChild) {
-                throw TransferError.capacityExceeded
+            if let max = target.maxCarryWeight {
+                let childWeight = child.totalWeight
+                let newTotal = target.totalWeight + childWeight
+                if newTotal.inBaseUnit > max.inBaseUnit {
+                    throw TransferError.capacityExceeded
+                }
             }
 
             if let idx = parent.inventories.firstIndex(of: child) {
@@ -135,7 +154,7 @@ final class TransferService {
         }
     }
 
-    private func isCycle(source: RInventory, target: RInventory) -> Bool {
+    private func isCycle(source: Inventory, target: Inventory) -> Bool {
         if source.id == target.id { return true }
         for child in target.inventories where isCycle(source: source, target: child) {
             return true

@@ -9,30 +9,30 @@ import RealmSwift
 
 enum GameRepository {
     static func allGames(for user: User) -> [Game] {
-        return user.games
+        return Array(user.games)
     }
 
     static func createGame(title: String, details: String?, isPublic: Bool, for user: User) -> Game {
         let realm = try! Realm()
-        var obj: RGame!
+        var obj: Game!
         try! realm.write {
-            obj = RGame()
+            obj = Game()
             obj.id = .generate()
             obj.title = title
             obj.details = details
             obj.isPublic = isPublic
 
-            user.model.games.append(obj)
+            user.games.append(obj)
             realm.add(obj)
         }
-        return Game(model: obj)
+        return obj
     }
 
     static func delete(game: Game) throws {
         let realm = try Realm()
         try realm.write {
-            realm.delete(game.model.rootInventories)
-            realm.delete(game.model)
+            realm.delete(game.rootInventories)
+            realm.delete(game)
         }
     }
 }

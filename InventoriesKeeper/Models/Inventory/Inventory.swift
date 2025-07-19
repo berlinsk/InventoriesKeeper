@@ -1,5 +1,5 @@
 //
-//  RInventory.swift
+//  Inventory.swift
 //  InventoriesKeeper
 //
 //  Created by Берлинский Ярослав Владленович on 02.07.2025.
@@ -43,7 +43,7 @@ class VehicleInventoryDetails: EmbeddedObject {
     @Persisted var defectList: String?
 }
 
-class RInventory: Object, ObjectKeyIdentifiable {
+class Inventory: Object, ObjectKeyIdentifiable {
     @Persisted(primaryKey: true) var id: ObjectId
     @Persisted var common: ItemInventoryCommonFields?
     @Persisted var maxCarryWeight: Weight?
@@ -51,8 +51,8 @@ class RInventory: Object, ObjectKeyIdentifiable {
     @Persisted var characterDetails: CharacterInventoryDetails?
     @Persisted var locationDetails: LocationInventoryDetails?
     @Persisted var vehicleDetails: VehicleInventoryDetails?
-    @Persisted var items = List<RItem>()
-    @Persisted var inventories = List<RInventory>()
+    @Persisted var items = List<Item>()
+    @Persisted var inventories = List<Inventory>()
     @Persisted var cachedTotalWeight: Double
     @Persisted var cachedTotalPersonalValue: Double
     @Persisted var cachedTotalMoneyAmount: Double
@@ -96,8 +96,8 @@ class RInventory: Object, ObjectKeyIdentifiable {
 
 }
 
-extension RInventory {
-    func isAncestor(of descendant: RInventory) -> Bool {
+extension Inventory {
+    func isAncestor(of descendant: Inventory) -> Bool {
         if inventories.contains(descendant) { return true }
         return inventories.contains { $0.isAncestor(of: descendant) }
     }
@@ -123,9 +123,68 @@ extension RInventory {
         cachedTotalValue = cachedTotalPersonalValue + cachedTotalMoneyAmount
 
         if let ownerId = common?.ownerId,
-           let parent = realm.object(ofType: RInventory.self, forPrimaryKey: ownerId),
+           let parent = realm.object(ofType: Inventory.self, forPrimaryKey: ownerId),
            parent.id != self.id {
             parent.updateCachedValuesRecursively()
         }
+    }
+    
+    func canAccept(rItem: Item) -> Bool {
+        guard let itemWeight = rItem.common?.weight else { return true }
+        guard let max = maxCarryWeight else { return true }
+        let newTotal = Weight(value: cachedTotalWeight + itemWeight.value, unit: .kg)
+        return newTotal.inBaseUnit <= max.inBaseUnit
+    }
+
+    func canAccept(rInventory: Inventory) -> Bool {
+        let addedWeight = rInventory.cachedTotalWeight
+        guard let max = maxCarryWeight else { return true }
+        let newTotal = Weight(value: cachedTotalWeight + addedWeight, unit: .kg)
+        return newTotal.inBaseUnit <= max.inBaseUnit
+    }
+    
+    static func createRoot(kind: InventoryKind, name: String) -> Inventory {
+        let realm = try! Realm()
+        var newInv: Inventory!
+        try! realm.write {
+            newInv = SeedFactory.makeInventory(kind: kind, name: name)
+            realm.add(newInv)
+            newInv.updateCachedValuesRecursively()
+        }
+        return newInv
+    }
+
+    static func createChild(kind: InventoryKind, name: String, ownerId: ObjectId) -> Inventory {
+        let realm = try! Realm()
+        var newInv: Inventory!
+        try! realm.write {
+            newInv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: ownerId)
+            realm.add(newInv)
+            newInv.updateCachedValuesRecursively()
+        }
+        return newInv
+    }
+
+    static func findOrCreateRoot(kind: InventoryKind, name: String) -> Inventory {
+        let realm = try! Realm()
+        if let existing = realm.objects(Inventory.self).filter("kind == %@", kind.rawValue).first {
+            return existing
+        } else {
+            return createRoot(kind: kind, name: name)
+        }
+    }
+
+    static func getAllRoots() -> [Inventory] {
+        let realm = try! Realm()
+        return realm.objects(Inventory.self)
+            .filter("common.ownerId == id")
+            .map { $0 }
+    }
+
+    static func findRoot(kind: InventoryKind) -> Inventory? {
+        let realm = try! Realm()
+        return realm.objects(Inventory.self)
+            .filter("kind == %@ AND common.ownerId == id", kind.rawValue)
+            .first
     }
 }

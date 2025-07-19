@@ -11,7 +11,7 @@ import RealmSwift
 struct InventoryPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: InventoryPickerViewModel
-    @ObservedResults(RInventory.self) private var allInventories
+    @ObservedResults(Inventory.self) private var allInventories
 
     init(excludedIds: Set<ObjectId>,
          onSelect: @escaping (Inventory) -> Void) {
@@ -45,7 +45,7 @@ struct InventoryPickerView: View {
 }
 
 private struct InventoryPickerNode: View {
-    let rInventory: RInventory
+    let rInventory: Inventory
     @ObservedObject var vm: InventoryPickerViewModel
     @State private var expanded = false
 
@@ -61,7 +61,7 @@ private struct InventoryPickerNode: View {
                 Text(rInventory.common?.name ?? "Unnamed")
                 Spacer()
                 Button {
-                    vm.onSelect(Inventory(model: rInventory))
+                    vm.onSelect(rInventory)
                 } label: {
                     Image(systemName: "checkmark.circle")
                 }

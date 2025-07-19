@@ -18,11 +18,11 @@ final class InventoryPickerViewModel: ObservableObject {
         self.onSelect    = onSelect
     }
 
-    func roots(from all: Results<RInventory>) -> [RInventory] {
+    func roots(from all: Results<Inventory>) -> [Inventory] {
         all.filter { $0.common?.ownerId == $0.id && !excludedIds.contains($0.id) }
     }
 
-    func children(of parent: RInventory) -> [RInventory] {
+    func children(of parent: Inventory) -> [Inventory] {
         parent.inventories.filter { !excludedIds.contains($0.id) }
     }
 }

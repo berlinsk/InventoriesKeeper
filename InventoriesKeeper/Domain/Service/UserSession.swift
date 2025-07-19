@@ -17,8 +17,8 @@ final class UserSession: ObservableObject {
     init() {
         let realm = try! Realm()
         
-        if realm.objects(RUser.self).filter("username == 'admin'").first == nil {
-            let admin = RUser()
+        if realm.objects(User.self).filter("username == 'admin'").first == nil {
+            let admin = User()
             admin.id = .generate()
             admin.username = "admin"
             admin.password = "admin"
@@ -30,44 +30,42 @@ final class UserSession: ObservableObject {
             }
         }
 
-        if let existingUser = realm.objects(RUser.self).filter("isLoggedIn == true").first {
-            let wrappedUser = User(model: existingUser)
-            self.user = wrappedUser
-            self.username = wrappedUser.username
-            self.isAdmin = wrappedUser.isAdmin
+        if let existingUser = realm.objects(User.self).filter("isLoggedIn == true").first {
+            self.user = existingUser
+            self.username = existingUser.username
+            self.isAdmin = existingUser.isAdmin
             self.isLoggedIn = true
         }
     }
     
     func login(username: String, password: String) -> Bool {
         let realm = try! Realm()
-        guard let existingUser = realm.objects(RUser.self).filter("username == %@", username).first,
+        guard let existingUser = realm.objects(User.self).filter("username == %@", username).first,
               existingUser.password == password else {
             return false
         }
         
         try! realm.write {
-            for user in realm.objects(RUser.self).filter("isLoggedIn == true") {
+            for user in realm.objects(User.self).filter("isLoggedIn == true") {
                 user.isLoggedIn = false
             }
             existingUser.isLoggedIn = true
         }
 
-        let wrappedUser = User(model: existingUser)
-        self.user = wrappedUser
-        self.username = wrappedUser.username
-        self.isAdmin = wrappedUser.isAdmin
+        self.user = existingUser
+        self.username = existingUser.username
+        self.isAdmin = existingUser.isAdmin
         self.isLoggedIn = true
         return true
     }
     
     func register(username: String, password: String) -> Bool {
         let realm = try! Realm()
-        if realm.objects(RUser.self).filter("username == %@", username).first != nil {
+        if realm.objects(User.self).filter("username == %@", username).first != nil {
             return false
         }
 
-        let newUser = RUser()
+        let newUser = User()
         newUser.id = .generate()
         newUser.username = username
         newUser.password = password
@@ -75,16 +73,15 @@ final class UserSession: ObservableObject {
         newUser.isLoggedIn = true
 
         try! realm.write {
-            for user in realm.objects(RUser.self).filter("isLoggedIn == true") {
+            for user in realm.objects(User.self).filter("isLoggedIn == true") {
                 user.isLoggedIn = false
             }
             realm.add(newUser)
         }
 
-        let wrappedUser = User(model: newUser)
-        self.user = wrappedUser
-        self.username = wrappedUser.username
-        self.isAdmin = wrappedUser.isAdmin
+        self.user = newUser
+        self.username = newUser.username
+        self.isAdmin = newUser.isAdmin
         self.isLoggedIn = true
         return true
     }
@@ -92,7 +89,7 @@ final class UserSession: ObservableObject {
     func logout() {
         let realm = try! Realm()
         try! realm.write {
-            realm.objects(RUser.self)
+            realm.objects(User.self)
                  .filter("isLoggedIn == true")
                  .setValue(false, forKey: "isLoggedIn")
         }
@@ -112,7 +109,7 @@ final class UserSession: ObservableObject {
             }
         }
 
-        if let managedUser = realm.object(ofType: RUser.self, forPrimaryKey: user.id) {
+        if let managedUser = realm.object(ofType: User.self, forPrimaryKey: user.id) {
             try! realm.write {
                 realm.delete(managedUser)
             }

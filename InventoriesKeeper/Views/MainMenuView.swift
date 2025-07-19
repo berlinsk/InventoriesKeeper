@@ -47,8 +47,8 @@ struct MainMenuView: View {
 
             List {
                 ForEach(vm.rootInventories, id: \.id) { inv in
-                    Button(inv.name) {
-                        path.append(inv.model)
+                    Button(inv.common?.name ?? "Unnamed") {
+                        path.append(inv)
                     }
                 }
                 .onDelete(perform: vm.deleteRootInventory)
@@ -64,7 +64,7 @@ struct MainMenuView: View {
         }
         .padding()
         .navigationTitle("Menu")
-        .navigationDestination(for: RInventory.self) { rInv in
+        .navigationDestination(for: Inventory.self) { rInv in
             InventoryDomainView(invModel: rInv)
         }
         .onChange(of: vm.gameModel.rootInventories.count) { _ in

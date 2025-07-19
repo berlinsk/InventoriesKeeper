@@ -15,11 +15,11 @@ final class MainMenuViewModel: ObservableObject {
     @Published var pendingPushId: ObjectId?
     @Published var rootInventories: [Inventory] = []
 
-    let gameModel: RGame
+    let gameModel: Game
     let session: UserSession
 
     init(game: Game, session: UserSession) {
-        self.gameModel = game.model
+        self.gameModel = game
         self.session = session
         loadRootInventories()
     }
@@ -29,7 +29,7 @@ final class MainMenuViewModel: ObservableObject {
     }
 
     func loadRootInventories() {
-        rootInventories = gameModel.rootInventories.map(Inventory.init)
+        rootInventories = Array(gameModel.rootInventories)
     }
 
     func openOrCreateRoot(kind: InventoryKind, defaultName: String, path: Binding<NavigationPath>) {
@@ -44,7 +44,7 @@ final class MainMenuViewModel: ObservableObject {
         guard let liveGame = gameModel.thaw(),
               let realm = liveGame.realm else { return }
 
-        var modelToOpen: RInventory!
+        var modelToOpen: Inventory!
 
         try! realm.write {
             let newInv = SeedFactory.makeInventory(kind: kind, name: name)
@@ -66,19 +66,21 @@ final class MainMenuViewModel: ObservableObject {
     }
 
     func deleteRootInventory(at indexSet: IndexSet) {
+        guard let realm = try? Realm() else { return }
         for index in indexSet {
-            try? rootInventories[index].deleteRecursively()
+            let inv = rootInventories[index]
+            TransferService.shared.deleteInventoryRecursively(inv, in: realm)
         }
         loadRootInventories()
     }
 
     func inventoryHierarchyDump() -> String {
         rootInventories
-            .map { inventoryHierarchyString(for: $0.model) }
+            .map { inventoryHierarchyString(for: $0) }
             .joined()
     }
 
-    private func inventoryHierarchyString(for inventory: RInventory, indent: Int = 0) -> String {
+    private func inventoryHierarchyString(for inventory: Inventory, indent: Int = 0) -> String {
         let indentString = String(repeating: "  ", count: indent)
         var result = "\(indentString)• \(inventory.common?.name ?? "Unnamed") [\(inventory.kind.rawValue)]\n"
         for child in inventory.inventories {
