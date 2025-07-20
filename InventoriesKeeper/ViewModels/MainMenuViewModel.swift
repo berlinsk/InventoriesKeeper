@@ -66,11 +66,19 @@ final class MainMenuViewModel: ObservableObject {
     }
 
     func deleteRootInventory(at indexSet: IndexSet) {
-        guard let realm = try? Realm() else { return }
-        for index in indexSet {
-            let inv = rootInventories[index]
-            TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+        guard let realm = try? Realm(),
+              let liveGame = gameModel.thaw() else { return }
+
+        try? realm.write {
+            for index in indexSet {
+                let inv = rootInventories[index]
+                TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+                if let idxInList = liveGame.rootInventories.firstIndex(of: inv) {
+                    liveGame.rootInventories.remove(at: idxInList)
+                }
+            }
         }
+
         loadRootInventories()
     }
 
