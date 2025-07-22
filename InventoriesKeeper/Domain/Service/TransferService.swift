@@ -147,6 +147,7 @@ final class TransferService {
             if let idx = parent.inventories.firstIndex(of: child) {
                 parent.inventories.remove(at: idx)
             }
+            child.common?.ownerId = target.id
             target.inventories.append(child)
 
             target.updateCachedValuesRecursively()
