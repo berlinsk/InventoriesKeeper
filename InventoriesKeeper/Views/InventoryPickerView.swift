@@ -11,13 +11,12 @@ import RealmSwift
 struct InventoryPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: InventoryPickerViewModel
-    @ObservedResults(Inventory.self) private var allInventories
 
-    init(excludedIds: Set<ObjectId>,
-         onSelect: @escaping (Inventory) -> Void) {
+    init(user: User,excludedIds: Set<ObjectId>, onSelect: @escaping (Inventory) -> Void) {
 
         _vm = StateObject(
             wrappedValue: InventoryPickerViewModel(
+                user: user,
                 excludedIds: excludedIds,
                 onSelect: onSelect
             )
@@ -27,9 +26,22 @@ struct InventoryPickerView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading) {
-                    ForEach(vm.roots(from: allInventories), id: \.id) { root in
-                        InventoryPickerNode(rInventory : root, vm: vm)
+                VStack(alignment: .leading, spacing: 16) {
+                    if let user = UserSession().currentUser() {
+                        ForEach(vm.groupedRoots(for: user), id: \.0.id) { game, roots in
+                            Section {
+                                ForEach(roots, id: \.id) { root in
+                                    InventoryPickerNode(rInventory: root, vm: vm)
+                                }
+                            } header: {
+                                Text("Game: \(game.title)")
+                                    .font(.headline)
+                                    .padding(.vertical, 4)
+                            }
+                        }
+                    } else {
+                        Text("No user logged in")
+                            .foregroundColor(.gray)
                     }
                 }
                 .padding()

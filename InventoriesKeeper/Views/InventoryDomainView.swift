@@ -53,14 +53,17 @@ struct InventoryDomainView: View {
             }
         }
         .sheet(isPresented: $showPicker) {
-            InventoryPickerView(
-                excludedIds: viewModel.computeExcludedIds(selection: selection, from: invModel),
-                onSelect: { destinationInventory in
-                    viewModel.moveSelected(selection: selection, from: invModel, to: destinationInventory)
-                    selection.removeAll()
-                    showPicker = false
-                }
-            )
+            if let user = UserSession().currentUser() {
+                InventoryPickerView(
+                    user: user,
+                    excludedIds: viewModel.computeExcludedIds(selection: selection, from: invModel),
+                    onSelect: { destinationInventory in
+                        viewModel.moveSelected(selection: selection, from: invModel, to: destinationInventory)
+                        selection.removeAll()
+                        showPicker = false
+                    }
+                )
+            }
         }
     }
 
