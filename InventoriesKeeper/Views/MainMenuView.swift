@@ -65,7 +65,7 @@ struct MainMenuView: View {
         .padding()
         .navigationTitle("Menu")
         .navigationDestination(for: Inventory.self) { rInv in
-            InventoryDomainView(invModel: rInv)
+            InventoryDomainView(gameModel: vm.gameModel, invModel: rInv)
         }
         .onChange(of: vm.gameModel.rootInventories.count) { _ in
             vm.handleRootChange(path: $path)

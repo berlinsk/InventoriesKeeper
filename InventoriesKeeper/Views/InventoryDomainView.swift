@@ -14,6 +14,7 @@ struct AlertText: Identifiable {
 }
 
 struct InventoryDomainView: View {
+    let gameModel: Game
     @ObservedRealmObject var invModel: Inventory
     @StateObject private var viewModel = InventoryDomainViewModel()
 
@@ -56,6 +57,7 @@ struct InventoryDomainView: View {
             if let user = UserSession().currentUser() {
                 InventoryPickerView(
                     user: user,
+                    game: gameModel,
                     excludedIds: viewModel.computeExcludedIds(selection: selection, from: invModel),
                     onSelect: { destinationInventory in
                         viewModel.moveSelected(selection: selection, from: invModel, to: destinationInventory)
@@ -83,7 +85,8 @@ struct InventoryDomainView: View {
     private func inventoriesSection() -> some View {
         Section("Inventories") {
             ForEach(invModel.inventories, id: \.id) { rInv in
-                NavigationLink(destination: InventoryDomainView(invModel: rInv)) {
+                let destinationView = InventoryDomainView(gameModel: gameModel, invModel: rInv)
+                NavigationLink(destination: destinationView) {
                     Text("\(rInv.common?.name ?? "Unnamed") | \(rInv.kind.rawValue)")
                 }
             }

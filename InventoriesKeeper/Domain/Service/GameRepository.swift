@@ -21,6 +21,7 @@ enum GameRepository {
             obj.title = title
             obj.details = details
             obj.isPublic = isPublic
+            obj.ownerId = user.id
 
             user.games.append(obj)
             realm.add(obj)
