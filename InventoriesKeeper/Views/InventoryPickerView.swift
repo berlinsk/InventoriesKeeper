@@ -27,39 +27,14 @@ struct InventoryPickerView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Picker("Mode", selection: $vm.mode) {
-                        Text("This Game").tag(InventoryPickerMode.currentGame)
-                        Text("My Games").tag(InventoryPickerMode.userGames)
-                        Text("All Games").tag(InventoryPickerMode.global)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
+                    modePicker
 
                     switch vm.mode {
                     case .currentGame, .userGames:
-                        ForEach(vm.groupedRoots(), id: \.1.id) { (_, game, roots) in
-                            DisclosureGroup("\(game.title)") {
-                                ForEach(roots, id: \.id) { root in
-                                    InventoryPickerNode(rInventory: root, vm: vm)
-                                        .padding(.leading, 8)
-                                }
-                            }
-                        }
+                        currentOrUserGamesSection
 
                     case .global:
-                        ForEach(Dictionary(grouping: vm.groupedRoots(), by: { $0.0 }).keys.sorted(by: { $0.username < $1.username }), id: \.id) { user in
-                            DisclosureGroup("\(user.username)") {
-                                ForEach(vm.groupedRoots().filter { $0.0.id == user.id }, id: \.1.id) { (_, game, roots) in
-                                    DisclosureGroup("\(game.title)") {
-                                        ForEach(roots, id: \.id) { root in
-                                            InventoryPickerNode(rInventory: root, vm: vm)
-                                                .padding(.leading, 8)
-                                        }
-                                    }
-                                    .padding(.leading, 8)
-                                }
-                            }
-                        }
+                        globalGamesSection
                     }
                 }
                 .padding()
@@ -68,6 +43,72 @@ struct InventoryPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var modePicker: some View {
+        Picker("Mode", selection: $vm.mode) {
+            Text("This Game").tag(InventoryPickerMode.currentGame)
+            Text("My Games").tag(InventoryPickerMode.userGames)
+            Text("All Games").tag(InventoryPickerMode.global)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var currentOrUserGamesSection: some View {
+        let grouped = vm.groupedRoots()
+        ForEach(grouped, id: \.1?.id) { (_, gameOptional, roots) in
+            if let game = gameOptional {
+                DisclosureGroup("\(game.title)") {
+                    ForEach(roots, id: \.id) { root in
+                        InventoryPickerNode(rInventory: root, vm: vm)
+                            .padding(.leading, 8)
+                    }
+                }
+            } else {
+                DisclosureGroup("Unknown Game") {
+                    ForEach(roots, id: \.id) { root in
+                        InventoryPickerNode(rInventory: root, vm: vm)
+                            .padding(.leading, 8)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var globalGamesSection: some View {
+        let grouped = vm.groupedRoots()
+        let groupedByUser = Dictionary(grouping: grouped, by: { $0.0 })
+        let sortedUsers = groupedByUser.keys.sorted(by: { $0.username < $1.username })
+
+        ForEach(sortedUsers, id: \.id) { user in
+            let userGroups = groupedByUser[user] ?? []
+            let gameGroups = Dictionary(grouping: userGroups, by: { $0.1 })
+
+            DisclosureGroup("\(user.username)") {
+                if gameGroups.keys.count == 1, gameGroups.keys.first == nil {
+                    Text("No games")
+                        .italic()
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 8)
+                } else {
+                    let sortedGames = gameGroups.keys.compactMap { $0 }.sorted { $0.title < $1.title }
+
+                    ForEach(sortedGames, id: \.id) { game in
+                        let roots = gameGroups[game]?.first?.2 ?? []
+                        DisclosureGroup("\(game.title)") {
+                            ForEach(roots, id: \.id) { root in
+                                InventoryPickerNode(rInventory: root, vm: vm)
+                                    .padding(.leading, 8)
+                            }
+                        }
+                        .padding(.leading, 8)
+                    }
                 }
             }
         }

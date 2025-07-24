@@ -28,33 +28,39 @@ final class InventoryPickerViewModel: ObservableObject {
         self.onSelect = onSelect
     }
 
-    func groupedRoots() -> [(User, Game, [Inventory])] {
+    func groupedRoots() -> [(User, Game?, [Inventory])] {
         let realm = try! Realm()
-        
+
         switch mode {
         case .currentGame:
             let roots = game.rootInventories.filter {
                 $0.common?.ownerId == $0.id && !self.excludedIds.contains($0.id)
             }
-            return roots.isEmpty ? [] : [(user, game, Array(roots))]
+            return [(user, game, Array(roots))]
 
         case .userGames:
-            return user.games.compactMap { game in
+            if user.games.isEmpty {
+                return [(user, nil, [])]
+            }
+            return user.games.map { game in
                 let roots = game.rootInventories.filter {
                     $0.common?.ownerId == $0.id && !self.excludedIds.contains($0.id)
                 }
-                return roots.isEmpty ? nil : (user, game, Array(roots))
+                return (user, game, Array(roots))
             }
 
         case .global:
-            return realm.objects(User.self).flatMap { user in
-                user.games.compactMap { game in
-                    let roots = game.rootInventories.filter {
-                        $0.common?.ownerId == $0.id && !self.excludedIds.contains($0.id)
+            return realm.objects(User.self).flatMap { user -> [(User, Game?, [Inventory])] in
+                    if user.games.isEmpty {
+                        return [(user, nil as Game?, [])]
                     }
-                    return roots.isEmpty ? nil : (user, game, Array(roots))
+                    return user.games.map { game in
+                        let roots = game.rootInventories.filter {
+                            $0.common?.ownerId == $0.id && !self.excludedIds.contains($0.id)
+                        }
+                        return (user, game, Array(roots))
+                    }
                 }
-            }
         }
     }
 
