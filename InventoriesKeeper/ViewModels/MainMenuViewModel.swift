@@ -75,6 +75,7 @@ final class MainMenuViewModel: ObservableObject {
             modelToOpen = newInv
         }
         
+        loadRootInventories()
         pendingPushId = modelToOpen.id
     }
 
