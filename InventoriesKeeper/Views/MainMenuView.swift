@@ -36,7 +36,7 @@ struct MainMenuView: View {
             .buttonStyle(.borderedProminent)
 
             Button("+ Add root inv") {
-                vm.createAndPushRoot(kind: .generic, name: "Root \(Int.random(in: 1...999))")
+                vm.createAndPushRoot(kind: .generic, name: "Root \(Int.random(in: 1...999))", isPublic: false)
             }
             .buttonStyle(.bordered)
 
@@ -67,7 +67,7 @@ struct MainMenuView: View {
         .navigationDestination(for: Inventory.self) { rInv in
             InventoryDomainView(gameModel: vm.gameModel, invModel: rInv)
         }
-        .onChange(of: vm.gameModel.rootInventories.count) { _ in
+        .onChange(of: vm.rootInventories.count) { _ in
             vm.handleRootChange(path: $path)
         }
     }

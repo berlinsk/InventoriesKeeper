@@ -27,40 +27,64 @@ final class MainMenuViewModel: ObservableObject {
     func logout() {
         session.logout()
     }
+    
+    private func allRootsForCurrentUser() -> [Inventory] {
+        let publics = Array(gameModel.publicRootInventories)
+
+        guard let currentUser = session.currentUser() else {
+            return publics
+        }
+
+        let privates = gameModel.privateRootInventories.filter { inv in
+            inv.common?.ownerId == currentUser.id
+        }
+        return publics + Array(privates)
+    }
 
     func loadRootInventories() {
-        rootInventories = Array(gameModel.rootInventories)
+        rootInventories = allRootsForCurrentUser()
     }
 
     func openOrCreateRoot(kind: InventoryKind, defaultName: String, path: Binding<NavigationPath>) {
-        if let rInv = gameModel.rootInventories.first(where: { $0.kind == kind }) {
+        let all = allRootsForCurrentUser()
+        if let rInv = all.first(where: { $0.kind == kind }) {
             path.wrappedValue.append(rInv)
         } else {
-            createAndPushRoot(kind: kind, name: defaultName)
+            createAndPushRoot(kind: kind, name: defaultName, isPublic: false)
         }
     }
 
-    func createAndPushRoot(kind: InventoryKind, name: String) {
+    func createAndPushRoot(kind: InventoryKind, name: String, isPublic: Bool = false) {
         guard let liveGame = gameModel.thaw(),
               let realm = liveGame.realm else { return }
 
         var modelToOpen: Inventory!
 
         try! realm.write {
-            let newInv = SeedFactory.makeInventory(kind: kind, name: name)
+            let newInv = SeedFactory.makeInventory(
+                kind: kind,
+                name: name,
+                ownerId: session.currentUser()?.id
+            )
             realm.add(newInv)
-            liveGame.rootInventories.append(newInv)
+            if isPublic {
+                liveGame.publicRootInventories.append(newInv)
+            } else {
+                liveGame.privateRootInventories.append(newInv)
+            }
             modelToOpen = newInv
         }
-
+        
         pendingPushId = modelToOpen.id
     }
 
     func handleRootChange(path: Binding<NavigationPath>) {
-        if let id = pendingPushId,
-           let rInv = gameModel.rootInventories.first(where: { $0.id == id }) {
-            path.wrappedValue.append(rInv)
-            pendingPushId = nil
+        if let id = pendingPushId {
+            let all = allRootsForCurrentUser()
+            if let rInv = all.first(where: { $0.id == id }) {
+                path.wrappedValue.append(rInv)
+                pendingPushId = nil
+            }
         }
         loadRootInventories()
     }
@@ -72,9 +96,13 @@ final class MainMenuViewModel: ObservableObject {
         try? realm.write {
             for index in indexSet {
                 let inv = rootInventories[index]
+
                 TransferService.shared.deleteInventoryRecursively(inv, in: realm)
-                if let idxInList = liveGame.rootInventories.firstIndex(of: inv) {
-                    liveGame.rootInventories.remove(at: idxInList)
+
+                if let idx = liveGame.publicRootInventories.firstIndex(of: inv) {
+                    liveGame.publicRootInventories.remove(at: idx)
+                } else if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
+                    liveGame.privateRootInventories.remove(at: idx)
                 }
             }
         }

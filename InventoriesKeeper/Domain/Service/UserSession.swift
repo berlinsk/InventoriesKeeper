@@ -100,24 +100,20 @@ final class UserSession: ObservableObject {
         guard let user = self.user else { return }
         let realm = try! Realm()
 
-        let snapshot = Array(user.games)
-        for game in snapshot {
-            do {
-                try GameRepository.delete(game: game)
-            } catch {
-                print("Failed to delete game: \(error)")
+        try! realm.write {
+            let allGames = realm.objects(Game.self)
+            for game in allGames {
+                if let index = game.participantIds.firstIndex(of: user.id) {
+                    game.participantIds.remove(at: index)
+                }
             }
-        }
 
-        if let managedUser = realm.object(ofType: User.self, forPrimaryKey: user.id) {
-            try! realm.write {
+            if let managedUser = realm.object(ofType: User.self, forPrimaryKey: user.id) {
                 realm.delete(managedUser)
             }
         }
-        self.username = nil
-        self.isLoggedIn = false
-        self.isAdmin = false
-        self.user = nil
+
+        clearSession()
     }
 
     func currentUser() -> User? {

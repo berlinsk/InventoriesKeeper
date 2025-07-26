@@ -15,5 +15,8 @@ class Game: Object, ObjectKeyIdentifiable {
     @Persisted var details: String?
     @Persisted var isPublic: Bool = false
 
-    @Persisted var rootInventories = List<Inventory>()
+    @Persisted var participantIds = List<ObjectId>()
+    
+    @Persisted var publicRootInventories = List<Inventory>()
+    @Persisted var privateRootInventories = List<Inventory>()
 }

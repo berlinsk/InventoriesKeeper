@@ -33,38 +33,42 @@ final class InventoryPickerViewModel: ObservableObject {
 
         switch mode {
         case .currentGame:
-            let roots = game.rootInventories.filter {
-                $0.common?.ownerId == $0.id && !self.excludedIds.contains($0.id)
-            }
+            let roots = allRoots(for: game, user: user)
+                .filter { !self.excludedIds.contains($0.id) }
             return [(user, game, Array(roots))]
 
         case .userGames:
-            if user.games.isEmpty {
+            if user.subscribedGames.isEmpty {
                 return [(user, nil, [])]
             }
-            return user.games.map { game in
-                let roots = game.rootInventories.filter {
-                    $0.common?.ownerId == $0.id && !self.excludedIds.contains($0.id)
-                }
-                return (user, game, Array(roots))
+            return user.subscribedGames.compactMap { gameId -> (User, Game?, [Inventory])? in
+                let realm = try! Realm()
+                guard let g = realm.object(ofType: Game.self, forPrimaryKey: gameId) else { return nil }
+                let roots = allRoots(for: g, user: user)
+                    .filter { !self.excludedIds.contains($0.id) }
+                return (user, g, roots)
             }
 
         case .global:
             return realm.objects(User.self).flatMap { user -> [(User, Game?, [Inventory])] in
-                    if user.games.isEmpty {
-                        return [(user, nil as Game?, [])]
-                    }
-                    return user.games.map { game in
-                        let roots = game.rootInventories.filter {
-                            $0.common?.ownerId == $0.id && !self.excludedIds.contains($0.id)
-                        }
-                        return (user, game, Array(roots))
-                    }
+                user.subscribedGames.compactMap { gameId -> (User, Game?, [Inventory])? in
+                    guard let g = realm.object(ofType: Game.self, forPrimaryKey: gameId) else { return nil }
+                    let roots = allRoots(for: g, user: user)
+                        .filter { !self.excludedIds.contains($0.id) }
+                    return (user, g, roots)
                 }
+            }
         }
     }
 
     func children(of parent: Inventory) -> [Inventory] {
         parent.inventories.filter { !excludedIds.contains($0.id) }
+    }
+    
+    private func allRoots(for game: Game, user: User?) -> [Inventory] {
+        let publics = Array(game.publicRootInventories)
+        guard let u = user else { return publics }
+        let privates = game.privateRootInventories.filter { $0.common?.ownerId == u.id }
+        return publics + Array(privates)
     }
 }
