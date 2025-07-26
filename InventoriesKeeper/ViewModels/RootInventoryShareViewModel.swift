@@ -23,10 +23,11 @@ final class RootInventoryShareViewModel: ObservableObject {
 
     func loadData() {
         let realm = try! Realm()
-        let liveGame = realm.object(ofType: Game.self, forPrimaryKey: game.id) ?? game
+        guard let liveGame = realm.object(ofType: Game.self, forPrimaryKey: game.id) else { return }
         rootInventories = Array(liveGame.publicRootInventories) + Array(liveGame.privateRootInventories)
+        let participants = liveGame.participantIds
         users = Array(realm.objects(User.self))
-            .filter { $0.id != liveGame.ownerId }
+            .filter { participants.contains($0.id) && $0.id != liveGame.ownerId }
     }
 
     func toggleRootSelection(_ id: ObjectId) {
