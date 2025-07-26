@@ -10,6 +10,7 @@ import SwiftUI
 
 final class GamesListViewModel: ObservableObject {
     @Published var games: [Game] = []
+    @Published var availableGames: [Game] = []
     @Published var showAdd: Bool = false
     @Published var navPath = NavigationPath()
 
@@ -23,10 +24,20 @@ final class GamesListViewModel: ObservableObject {
     func loadGames() {
         guard let user = session.currentUser() else {
             games = []
+            availableGames = []
             return
         }
         let all = GameRepository.allGames()
         games = all.filter { user.subscribedGames.contains($0.id) }
+        availableGames = all.filter {
+            $0.isPublic && !user.subscribedGames.contains($0.id)
+        }
+    }
+    
+    func subscribe(to game: Game) {
+        guard let currentUser = session.currentUser() else { return }
+        GameRepository.subscribe(currentUser, to: game)
+        loadGames()
     }
 
     func deleteGames(at offsets: IndexSet) {

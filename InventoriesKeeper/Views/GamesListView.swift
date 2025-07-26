@@ -19,12 +19,30 @@ struct GamesListView: View {
     var body: some View {
         NavigationStack(path: $vm.navPath) {
             List {
-                ForEach(vm.games, id: \.id) { game in
-                    NavigationLink(value: game) {
-                        Text(game.title)
+                if !vm.games.isEmpty {
+                    Section(header: Text("Your Games")) {
+                        ForEach(vm.games, id: \.id) { game in
+                            NavigationLink(value: game) {
+                                Text(game.title)
+                            }
+                        }
+                        .onDelete(perform: vm.deleteGames)
                     }
                 }
-                .onDelete(perform: vm.deleteGames)
+                if !vm.availableGames.isEmpty {
+                    Section(header: Text("Available Games")) {
+                        ForEach(vm.availableGames, id: \.id) { game in
+                            HStack {
+                                Text(game.title)
+                                Spacer()
+                                Button("Subscribe") {
+                                    vm.subscribe(to: game)
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Your Games")
             .navigationDestination(for: Game.self) { game in
