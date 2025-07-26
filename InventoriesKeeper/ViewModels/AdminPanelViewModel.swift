@@ -11,6 +11,7 @@ import RealmSwift
 
 final class AdminPanelViewModel: ObservableObject {
     @Published var users: [User] = []
+    @Published var games: [Game] = []
 
     private let session: UserSession
 
@@ -22,6 +23,10 @@ final class AdminPanelViewModel: ObservableObject {
         let realm = try! Realm()
         let rUsers = realm.objects(User.self)
         users = Array(rUsers)
+    }
+    
+    func fetchGames() {
+        games = GameRepository.allGames()
     }
 
     func deleteUsers(at offsets: IndexSet) {
@@ -41,6 +46,14 @@ final class AdminPanelViewModel: ObservableObject {
         if isCurrent {
             session.logout()
         }
+    }
+    
+    func deleteGames(at offsets: IndexSet) {
+        for i in offsets {
+            let game = games[i]
+            try? GameRepository.delete(game: game)
+        }
+        fetchGames()
     }
 
     func exportUserRealm(user: User) {
@@ -66,6 +79,7 @@ final class AdminPanelViewModel: ObservableObject {
                 self.deleteAllData()
                 DispatchQueue.main.async {
                     self.users = []
+                    self.games = []
                 }
             }
         })
@@ -92,6 +106,11 @@ final class AdminPanelViewModel: ObservableObject {
                 deleteUser(rUser)
             }
         }
+        
+        let allGames = GameRepository.allGames()
+            for game in allGames {
+                try? GameRepository.delete(game: game)
+            }
 
         if removedCurrent {
             session.logout()

@@ -31,6 +31,22 @@ struct AdminPanelView: View {
                     Text("No users to display")
                         .foregroundColor(.gray)
                 }
+                if !vm.games.isEmpty {
+                    Section(header: Text("Games")) {
+                        ForEach(vm.games, id: \.id) { game in
+                            VStack(alignment: .leading) {
+                                Text(game.title).font(.headline)
+                                if let details = game.details {
+                                    Text(details).font(.subheadline).foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .onDelete(perform: vm.deleteGames)
+                    }
+                } else {
+                    Text("No games to display")
+                        .foregroundColor(.gray)
+                }
             }
             .id(UUID())
             .navigationTitle("Admin Panel")
@@ -48,6 +64,7 @@ struct AdminPanelView: View {
             }
             .onAppear {
                 vm.fetchUsers()
+                vm.fetchGames()
             }
         }
     }
