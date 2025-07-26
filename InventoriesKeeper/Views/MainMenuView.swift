@@ -11,6 +11,7 @@ import RealmSwift
 struct MainMenuView: View {
     @StateObject private var vm: MainMenuViewModel
     @Binding var path: NavigationPath
+    @State private var showingShare = false
 
     init(game: Game, session: UserSession, path: Binding<NavigationPath>) {
         _vm = StateObject(wrappedValue: MainMenuViewModel(game: game, session: session))
@@ -39,6 +40,11 @@ struct MainMenuView: View {
                 vm.createAndPushRoot(kind: .generic, name: "Root \(Int.random(in: 1...999))", isPublic: false)
             }
             .buttonStyle(.bordered)
+            
+            Button("Share Roots") {
+                showingShare = true
+            }
+            .buttonStyle(.borderedProminent)
 
             Divider().padding(.vertical, 8)
 
@@ -69,6 +75,9 @@ struct MainMenuView: View {
         }
         .onChange(of: vm.rootInventories.count) { _ in
             vm.handleRootChange(path: $path)
+        }
+        .sheet(isPresented: $showingShare) {
+            RootInventoryShareView(game: vm.gameModel)
         }
     }
 }
