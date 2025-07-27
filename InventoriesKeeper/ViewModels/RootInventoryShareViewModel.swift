@@ -24,10 +24,9 @@ final class RootInventoryShareViewModel: ObservableObject {
     func loadData() {
         let realm = try! Realm()
         guard let liveGame = realm.object(ofType: Game.self, forPrimaryKey: game.id) else { return }
-        rootInventories = Array(liveGame.publicRootInventories) + Array(liveGame.privateRootInventories)
-        let participants = liveGame.participantIds
-        users = Array(realm.objects(User.self))
-            .filter { participants.contains($0.id) && $0.id != liveGame.ownerId }
+        rootInventories = GameRepository.rootInventories(of: liveGame)
+        users = GameRepository.participants(of: liveGame)
+            .filter { $0.id != liveGame.ownerId }
     }
 
     func toggleRootSelection(_ id: ObjectId) {
@@ -54,6 +53,8 @@ final class RootInventoryShareViewModel: ObservableObject {
 
         let rootIds  = Array(selectedRootIds)
         let userIds  = Array(selectedUserIds)
+        
+        var usersToSubscribe: [User] = []
 
         try! realm.write {
             let toShare = liveGame.privateRootInventories.filter { rootIds.contains($0.id) }
@@ -69,15 +70,11 @@ final class RootInventoryShareViewModel: ObservableObject {
                 }
             }
 
-            let realmUsers = realm.objects(User.self).filter("id IN %@", userIds)
-            for u in realmUsers {
-                if !u.subscribedGames.contains(liveGame.id) {
-                    u.subscribedGames.append(liveGame.id)
-                }
-                if !liveGame.participantIds.contains(u.id) {
-                    liveGame.participantIds.append(u.id)
-                }
-            }
+            usersToSubscribe = Array(realm.objects(User.self).filter("id IN %@", userIds))
+        }
+        
+        for u in usersToSubscribe {
+            GameRepository.subscribe(u, to: liveGame)
         }
 
         loadData()

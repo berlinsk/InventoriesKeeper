@@ -12,6 +12,17 @@ enum GameRepository {
         let realm = try! Realm()
         return Array(realm.objects(Game.self))
     }
+    
+    static func participants(of game: Game) -> [User] {
+        let realm = try! Realm()
+        return realm.objects(User.self)
+            .filter { game.participantIds.contains($0.id) }
+            .map { $0 }
+    }
+    
+    static func rootInventories(of game: Game) -> [Inventory] {
+        Array(game.publicRootInventories) + Array(game.privateRootInventories)
+    }
 
     static func createGame(title: String, details: String?, isPublic: Bool, owner: User) -> Game {
        let realm = try! Realm()
@@ -29,16 +40,20 @@ enum GameRepository {
        }
        return obj
    }
-
+    
     static func subscribe(_ user: User, to game: Game) {
-        guard let realm = try? Realm() else { return }
-        try? realm.write {
-            if !user.subscribedGames.contains(game.id) {
-                user.subscribedGames.append(game.id)
-            }
-            if !game.participantIds.contains(user.id) {
-                game.participantIds.append(user.id)
-            }
+        let realm = try! Realm()
+        try! realm.write {
+            _subscribe(user, to: game)
+        }
+    }
+    
+    static func _subscribe(_ user: User, to game: Game) {
+        if !user.subscribedGames.contains(game.id) {
+            user.subscribedGames.append(game.id)
+        }
+        if !game.participantIds.contains(user.id) {
+            game.participantIds.append(user.id)
         }
     }
     
