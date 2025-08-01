@@ -23,28 +23,48 @@ enum GameRepository {
     static func rootInventories(of game: Game) -> [Inventory] {
         Array(game.publicRootInventories) + Array(game.privateRootInventories)
     }
+    
+    static func createRootInventory(for game: Game, user: User, name: String, kind: InventoryKind, isPublic: Bool, in realm: Realm) {
+        let inv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: user.id)
+        realm.add(inv)
+        if isPublic {
+            game.publicRootInventories.append(inv)
+        } else {
+            game.privateRootInventories.append(inv)
+        }
+    }
 
     static func createGame(title: String, details: String?, isPublic: Bool, owner: User) -> Game {
-       let realm = try! Realm()
-       var obj: Game!
-       try! realm.write {
-           obj = Game()
-           obj.id = .generate()
-           obj.title = title
-           obj.details = details
-           obj.isPublic = isPublic
+        let realm = try! Realm()
+        var obj: Game!
+        try! realm.write {
+            obj = Game()
+            obj.id = .generate()
+            obj.title = title
+            obj.details = details
+            obj.isPublic = isPublic
 
-           obj.participantIds.append(owner.id)
-           owner.subscribedGames.append(obj.id)
-           realm.add(obj)
-       }
-       return obj
-   }
+            obj.participantIds.append(owner.id)
+            owner.subscribedGames.append(obj.id)
+            realm.add(obj)
+
+            createRootInventory(for: obj, user: owner, name: "Global Inventory", kind: .location, isPublic: true, in: realm)
+            createRootInventory(for: obj, user: owner, name: "Main Character", kind: .character, isPublic: false, in: realm)
+        }
+        return obj
+    }
     
     static func subscribe(_ user: User, to game: Game) {
         let realm = try! Realm()
         try! realm.write {
             _subscribe(user, to: game)
+            
+            let isNewParticipant = !game.privateRootInventories.contains(where: { inv in
+                inv.kind == .character && inv.common?.ownerId == user.id
+            })
+            if isNewParticipant {
+                createRootInventory(for: game, user: user, name: "Main Character", kind: .character, isPublic: false, in: realm)
+            }
         }
     }
     
