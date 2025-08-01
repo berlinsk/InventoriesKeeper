@@ -29,16 +29,24 @@ final class MainMenuViewModel: ObservableObject {
     }
     
     private func allRootsForCurrentUser() -> [Inventory] {
+        guard let currentUser = session.currentUser(),
+              let realm = gameModel.realm else {
+            return Array(gameModel.publicRootInventories)
+        }
+
         let publics = Array(gameModel.publicRootInventories)
 
-        guard let currentUser = session.currentUser() else {
-            return publics
+        let privates = gameModel.privateRootInventories.filter {
+            $0.common?.ownerId == currentUser.id
         }
 
-        let privates = gameModel.privateRootInventories.filter { inv in
-            inv.common?.ownerId == currentUser.id
-        }
-        return publics + Array(privates)
+        let shared = gameModel.sharedRootAccess
+            .filter { $0.userId == currentUser.id }
+            .compactMap { access in
+                realm.object(ofType: Inventory.self, forPrimaryKey: access.inventoryId)
+            }
+
+        return Array(Set(publics + Array(privates) + shared))
     }
 
     func loadRootInventories() {
@@ -98,13 +106,21 @@ final class MainMenuViewModel: ObservableObject {
             for index in indexSet {
                 let inv = rootInventories[index]
 
-                TransferService.shared.deleteInventoryRecursively(inv, in: realm)
-
                 if let idx = liveGame.publicRootInventories.firstIndex(of: inv) {
                     liveGame.publicRootInventories.remove(at: idx)
                 } else if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
                     liveGame.privateRootInventories.remove(at: idx)
                 }
+
+                for i in (0..<liveGame.sharedRootAccess.count).reversed() {
+                    if liveGame.sharedRootAccess[i].inventoryId == inv.id {
+                        let access = liveGame.sharedRootAccess[i]
+                        liveGame.sharedRootAccess.remove(at: i)
+                        realm.delete(access)
+                    }
+                }
+
+                TransferService.shared.deleteInventoryRecursively(inv, in: realm)
             }
         }
 

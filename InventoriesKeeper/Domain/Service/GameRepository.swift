@@ -20,8 +20,20 @@ enum GameRepository {
             .map { $0 }
     }
     
-    static func rootInventories(of game: Game) -> [Inventory] {
-        Array(game.publicRootInventories) + Array(game.privateRootInventories)
+    static func rootInventories(of game: Game, for user: User) -> [Inventory] {
+        let realm = try! Realm()
+
+        let personal = Array(game.privateRootInventories.filter {
+            $0.common?.ownerId == user.id
+        })
+
+        let publicShared = Array(game.sharedRootAccess
+            .filter { $0.userId == user.id }
+            .compactMap { access in
+                realm.object(ofType: Inventory.self, forPrimaryKey: access.inventoryId)
+            })
+
+        return Array(Set(personal + publicShared))
     }
     
     static func createRootInventory(for game: Game, user: User, name: String, kind: InventoryKind, isPublic: Bool, in realm: Realm) {
@@ -94,6 +106,7 @@ enum GameRepository {
         try realm.write {
             realm.delete(game.publicRootInventories)
             realm.delete(game.privateRootInventories)
+            game.sharedRootAccess.removeAll()
             realm.delete(game)
         }
     }

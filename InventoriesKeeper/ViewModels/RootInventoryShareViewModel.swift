@@ -64,26 +64,24 @@ final class RootInventoryShareViewModel: ObservableObject {
         let rootIds  = Array(selectedRootIds)
         let userIds  = Array(selectedUserIds)
         
-        var usersToSubscribe: [User] = []
-
         try! realm.write {
-            let toShare = liveGame.privateRootInventories.filter { rootIds.contains($0.id) }
-
-            for inv in toShare {
-                if !liveGame.publicRootInventories.contains(inv) {
-                    liveGame.publicRootInventories.append(inv)
+            for userId in userIds {
+                for rootId in rootIds {
+                    let alreadyShared = liveGame.sharedRootAccess.contains {
+                        $0.userId == userId && $0.inventoryId == rootId
+                    }
+                    if !alreadyShared {
+                        let access = SharedRootAccess()
+                        access.userId = userId
+                        access.inventoryId = rootId
+                        liveGame.sharedRootAccess.append(access)
+                    }
                 }
             }
-            for inv in toShare {
-                if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
-                    liveGame.privateRootInventories.remove(at: idx)
-                }
-            }
-
-            usersToSubscribe = Array(realm.objects(User.self).filter("id IN %@", userIds))
         }
         
-        for u in usersToSubscribe {
+        let usersToSubscribe = Array(realm.objects(User.self).filter("id IN %@", userIds))
+            for u in usersToSubscribe {
             GameRepository.subscribe(u, to: liveGame)
         }
 
