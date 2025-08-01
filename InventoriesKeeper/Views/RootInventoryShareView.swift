@@ -12,8 +12,8 @@ struct RootInventoryShareView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: RootInventoryShareViewModel
 
-    init(game: Game) {
-        _vm = StateObject(wrappedValue: RootInventoryShareViewModel(game: game))
+    init(game: Game, session: UserSession) {
+        _vm = StateObject(wrappedValue: RootInventoryShareViewModel(game: game, session: session))
     }
 
     var body: some View {

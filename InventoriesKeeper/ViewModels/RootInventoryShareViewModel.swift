@@ -15,18 +15,28 @@ final class RootInventoryShareViewModel: ObservableObject {
     @Published var selectedUserIds: Set<ObjectId> = []
 
     private let game: Game
+    private let session: UserSession
 
-    init(game: Game) {
+    init(game: Game, session: UserSession) {
         self.game = game
+        self.session = session
         loadData()
     }
 
     func loadData() {
         let realm = try! Realm()
-        guard let liveGame = realm.object(ofType: Game.self, forPrimaryKey: game.id) else { return }
-        rootInventories = GameRepository.rootInventories(of: liveGame)
+        guard let liveGame = realm.object(ofType: Game.self, forPrimaryKey: game.id), let currentUser = session.user else { return }
+
+        let ownedPrivate = Array(liveGame.privateRootInventories.filter {
+            $0.common?.ownerId == currentUser.id
+        })
+
+        let sharedPublic = Array(liveGame.publicRootInventories)
+
+        rootInventories = Array(Set(ownedPrivate + sharedPublic))
+
         users = GameRepository.participants(of: liveGame)
-            .filter { $0.id != liveGame.ownerId }
+            .filter { $0.id != currentUser.id }
     }
 
     func toggleRootSelection(_ id: ObjectId) {

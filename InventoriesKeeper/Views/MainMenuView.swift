@@ -77,7 +77,7 @@ struct MainMenuView: View {
             vm.handleRootChange(path: $path)
         }
         .sheet(isPresented: $showingShare) {
-            RootInventoryShareView(game: vm.gameModel)
+            RootInventoryShareView(game: vm.gameModel, session: vm.session)
         }
     }
 }
