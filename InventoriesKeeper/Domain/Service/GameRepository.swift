@@ -79,6 +79,27 @@ enum GameRepository {
             if isNewParticipant {
                 createRootInventory(for: game, user: user, name: "Main Character", kind: .character, isPublic: false, in: realm)
             }
+            
+            let alreadySharedIds = Set(
+                game.publicRootInventories
+                    .filter { $0.user?.id == user.id }
+                    .compactMap { $0.inventory?.id }
+            )
+
+            for shared in game.publicRootInventories {
+                guard let inv = shared.inventory,
+                      let sharedFromUserId = shared.user?.id,
+                      sharedFromUserId != user.id,
+                      !alreadySharedIds.contains(inv.id)
+                else {
+                    continue
+                }
+
+                let newShared = SharedRootInventory()
+                newShared.user = user
+                newShared.inventory = inv
+                game.publicRootInventories.append(newShared)
+            }
         }
     }
     
