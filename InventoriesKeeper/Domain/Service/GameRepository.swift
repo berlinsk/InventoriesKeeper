@@ -86,19 +86,30 @@ enum GameRepository {
                     .compactMap { $0.inventory?.id }
             )
 
+            var foundGlobalInventory = false
+            
             for shared in game.publicRootInventories {
                 guard let inv = shared.inventory,
-                      let sharedFromUserId = shared.user?.id,
-                      sharedFromUserId != user.id,
-                      !alreadySharedIds.contains(inv.id)
-                else {
-                    continue
+                      let sharedFromUserId = shared.user?.id else { continue }
+
+                if inv.kind == .location && sharedFromUserId != user.id {
+                    foundGlobalInventory = true
                 }
 
-                let newShared = SharedRootInventory()
-                newShared.user = user
-                newShared.inventory = inv
-                game.publicRootInventories.append(newShared)
+                if sharedFromUserId != user.id && !alreadySharedIds.contains(inv.id) {
+                    let newShared = SharedRootInventory()
+                    newShared.user = user
+                    newShared.inventory = inv
+                    game.publicRootInventories.append(newShared)
+                }
+            }
+
+            let hasGlobalForThisUser = game.publicRootInventories.contains {
+                $0.user?.id == user.id && $0.inventory?.kind == .location
+            }
+
+            if !foundGlobalInventory && !hasGlobalForThisUser {
+                createRootInventory(for: game, user: user, name: "Global Inventory", kind: .location, isPublic: true, in: realm)
             }
         }
     }
