@@ -103,7 +103,8 @@ final class MainMenuViewModel: ObservableObject {
 
     func deleteRootInventory(at indexSet: IndexSet) {
         guard let realm = try? Realm(),
-              let liveGame = gameModel.thaw() else { return }
+              let liveGame = gameModel.thaw(),
+              let currentUser = session.currentUser() else { return }
 
         try? realm.write {
             for index in indexSet {
@@ -111,15 +112,17 @@ final class MainMenuViewModel: ObservableObject {
 
                 if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
                     liveGame.privateRootInventories.remove(at: idx)
+                    TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+                    continue
                 }
 
-                if let idx = liveGame.publicRootInventories.firstIndex(where: { $0.inventory?.id == inv.id }) {
+                if let idx = liveGame.publicRootInventories.firstIndex(where: {
+                    $0.inventory?.id == inv.id && $0.user?.id == currentUser.id
+                }) {
                     let shared = liveGame.publicRootInventories[idx]
                     liveGame.publicRootInventories.remove(at: idx)
                     realm.delete(shared)
                 }
-
-                TransferService.shared.deleteInventoryRecursively(inv, in: realm)
             }
         }
 
