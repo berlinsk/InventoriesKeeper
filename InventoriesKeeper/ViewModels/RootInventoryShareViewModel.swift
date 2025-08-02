@@ -31,7 +31,8 @@ final class RootInventoryShareViewModel: ObservableObject {
             $0.common?.ownerId == currentUser.id
         })
 
-        let sharedPublic = Array(liveGame.publicRootInventories)
+        let sharedPublic = liveGame.publicRootInventories
+            .compactMap { $0.user?.id == currentUser.id ? $0.inventory : nil }
 
         rootInventories = Array(Set(ownedPrivate + sharedPublic))
 
@@ -61,28 +62,32 @@ final class RootInventoryShareViewModel: ObservableObject {
         let realm = try! Realm()
         guard let liveGame = realm.object(ofType: Game.self, forPrimaryKey: game.id) else { return }
 
-        let rootIds  = Array(selectedRootIds)
-        let userIds  = Array(selectedUserIds)
-        
+        let rootInventories = selectedRootIds.compactMap { id in
+            realm.object(ofType: Inventory.self, forPrimaryKey: id)
+        }
+
+        let usersToShare = selectedUserIds.compactMap { id in
+            realm.object(ofType: User.self, forPrimaryKey: id)
+        }
+
         try! realm.write {
-            for userId in userIds {
-                for rootId in rootIds {
-                    let alreadyShared = liveGame.sharedRootAccess.contains {
-                        $0.userId == userId && $0.inventoryId == rootId
+            for user in usersToShare {
+                for inventory in rootInventories {
+                    let alreadyShared = liveGame.publicRootInventories.contains {
+                        $0.user?.id == user.id && $0.inventory?.id == inventory.id
                     }
                     if !alreadyShared {
-                        let access = SharedRootAccess()
-                        access.userId = userId
-                        access.inventoryId = rootId
-                        liveGame.sharedRootAccess.append(access)
+                        let shared = SharedRootInventory()
+                        shared.user = user
+                        shared.inventory = inventory
+                        liveGame.publicRootInventories.append(shared)
                     }
                 }
             }
         }
-        
-        let usersToSubscribe = Array(realm.objects(User.self).filter("id IN %@", userIds))
-            for u in usersToSubscribe {
-            GameRepository.subscribe(u, to: liveGame)
+
+        for user in usersToShare {
+            GameRepository.subscribe(user, to: liveGame)
         }
 
         loadData()

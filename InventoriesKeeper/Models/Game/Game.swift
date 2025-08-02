@@ -8,9 +8,9 @@
 import Foundation
 import RealmSwift
 
-class SharedRootAccess: EmbeddedObject {
-    @Persisted var userId: ObjectId
-    @Persisted var inventoryId: ObjectId
+class SharedRootInventory: EmbeddedObject {
+    @Persisted var user: User?
+    @Persisted var inventory: Inventory?
 }
 
 class Game: Object, ObjectKeyIdentifiable {
@@ -21,8 +21,7 @@ class Game: Object, ObjectKeyIdentifiable {
     @Persisted var isPublic: Bool = false
 
     @Persisted var participantIds = List<ObjectId>()
-    @Persisted var sharedRootAccess = List<SharedRootAccess>()
     
-    @Persisted var publicRootInventories = List<Inventory>()
+    @Persisted var publicRootInventories = List<SharedRootInventory>()
     @Persisted var privateRootInventories = List<Inventory>()
 }

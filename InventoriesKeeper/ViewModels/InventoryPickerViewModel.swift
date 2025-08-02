@@ -66,9 +66,21 @@ final class InventoryPickerViewModel: ObservableObject {
     }
     
     private func allRoots(for game: Game, user: User?) -> [Inventory] {
-        let publics = Array(game.publicRootInventories)
+        let publics: [Inventory] = game.publicRootInventories
+            .compactMap { shared in
+                guard let inventory = shared.inventory else { return nil }
+                if let u = user {
+                    return shared.user?.id == u.id ? inventory : nil
+                } else {
+                    return inventory
+                }
+            }
+
         guard let u = user else { return publics }
-        let privates = game.privateRootInventories.filter { $0.common?.ownerId == u.id }
+
+        let privates = game.privateRootInventories
+            .filter { $0.common?.ownerId == u.id }
+
         return publics + Array(privates)
     }
 }

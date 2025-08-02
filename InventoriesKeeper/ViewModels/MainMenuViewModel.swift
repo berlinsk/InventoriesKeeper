@@ -31,22 +31,19 @@ final class MainMenuViewModel: ObservableObject {
     private func allRootsForCurrentUser() -> [Inventory] {
         guard let currentUser = session.currentUser(),
               let realm = gameModel.realm else {
-            return Array(gameModel.publicRootInventories)
+            return gameModel.publicRootInventories.compactMap { $0.inventory }
         }
 
-        let publics = Array(gameModel.publicRootInventories)
-
-        let privates = gameModel.privateRootInventories.filter {
+        let privates = Array(gameModel.privateRootInventories.filter {
             $0.common?.ownerId == currentUser.id
-        }
+        })
 
-        let shared = gameModel.sharedRootAccess
-            .filter { $0.userId == currentUser.id }
-            .compactMap { access in
-                realm.object(ofType: Inventory.self, forPrimaryKey: access.inventoryId)
-            }
+        let sharedPublics = Array(gameModel.publicRootInventories
+            .filter { $0.user?.id == currentUser.id }
+            .compactMap { $0.inventory }
+        )
 
-        return Array(Set(publics + Array(privates) + shared))
+        return Array(Set(privates + sharedPublics))
     }
 
     func loadRootInventories() {
@@ -64,7 +61,8 @@ final class MainMenuViewModel: ObservableObject {
 
     func createAndPushRoot(kind: InventoryKind, name: String, isPublic: Bool = false) {
         guard let liveGame = gameModel.thaw(),
-              let realm = liveGame.realm else { return }
+              let realm = liveGame.realm,
+              let currentUser = session.currentUser() else { return }
 
         var modelToOpen: Inventory!
 
@@ -72,17 +70,22 @@ final class MainMenuViewModel: ObservableObject {
             let newInv = SeedFactory.makeInventory(
                 kind: kind,
                 name: name,
-                ownerId: session.currentUser()?.id
+                ownerId: currentUser.id
             )
             realm.add(newInv)
+
             if isPublic {
-                liveGame.publicRootInventories.append(newInv)
+                let shared = SharedRootInventory()
+                shared.user = currentUser
+                shared.inventory = newInv
+                liveGame.publicRootInventories.append(shared)
             } else {
                 liveGame.privateRootInventories.append(newInv)
             }
+
             modelToOpen = newInv
         }
-        
+
         loadRootInventories()
         pendingPushId = modelToOpen.id
     }
@@ -106,18 +109,14 @@ final class MainMenuViewModel: ObservableObject {
             for index in indexSet {
                 let inv = rootInventories[index]
 
-                if let idx = liveGame.publicRootInventories.firstIndex(of: inv) {
-                    liveGame.publicRootInventories.remove(at: idx)
-                } else if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
+                if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
                     liveGame.privateRootInventories.remove(at: idx)
                 }
 
-                for i in (0..<liveGame.sharedRootAccess.count).reversed() {
-                    if liveGame.sharedRootAccess[i].inventoryId == inv.id {
-                        let access = liveGame.sharedRootAccess[i]
-                        liveGame.sharedRootAccess.remove(at: i)
-                        realm.delete(access)
-                    }
+                if let idx = liveGame.publicRootInventories.firstIndex(where: { $0.inventory?.id == inv.id }) {
+                    let shared = liveGame.publicRootInventories[idx]
+                    liveGame.publicRootInventories.remove(at: idx)
+                    realm.delete(shared)
                 }
 
                 TransferService.shared.deleteInventoryRecursively(inv, in: realm)

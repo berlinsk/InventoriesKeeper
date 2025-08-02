@@ -27,11 +27,9 @@ enum GameRepository {
             $0.common?.ownerId == user.id
         })
 
-        let publicShared = Array(game.sharedRootAccess
-            .filter { $0.userId == user.id }
-            .compactMap { access in
-                realm.object(ofType: Inventory.self, forPrimaryKey: access.inventoryId)
-            })
+        let publicShared = game.publicRootInventories
+            .filter { $0.user?.id == user.id }
+            .compactMap { $0.inventory }
 
         return Array(Set(personal + publicShared))
     }
@@ -39,8 +37,12 @@ enum GameRepository {
     static func createRootInventory(for game: Game, user: User, name: String, kind: InventoryKind, isPublic: Bool, in realm: Realm) {
         let inv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: user.id)
         realm.add(inv)
+
         if isPublic {
-            game.publicRootInventories.append(inv)
+            let shared = SharedRootInventory()
+            shared.user = user
+            shared.inventory = inv
+            game.publicRootInventories.append(shared)
         } else {
             game.privateRootInventories.append(inv)
         }
@@ -104,9 +106,19 @@ enum GameRepository {
     static func delete(game: Game) throws {
         let realm = try Realm()
         try realm.write {
-            realm.delete(game.publicRootInventories)
-            realm.delete(game.privateRootInventories)
-            game.sharedRootAccess.removeAll()
+            for shared in game.publicRootInventories {
+                if let inv = shared.inventory {
+                    TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+                }
+            }
+
+            for inv in game.privateRootInventories {
+                TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+            }
+
+            game.publicRootInventories.removeAll()
+            game.privateRootInventories.removeAll()
+            
             realm.delete(game)
         }
     }
