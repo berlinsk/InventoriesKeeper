@@ -84,6 +84,26 @@ final class RootInventoryShareViewModel: ObservableObject {
                     }
                 }
             }
+
+            for inventory in rootInventories {
+                if let idx = liveGame.privateRootInventories.firstIndex(of: inventory) {
+                    liveGame.privateRootInventories.remove(at: idx)
+                }
+            }
+
+            if let currentUser = session.user {
+                for inventory in rootInventories {
+                    let alreadySharedBySelf = liveGame.publicRootInventories.contains {
+                        $0.user?.id == currentUser.id && $0.inventory?.id == inventory.id
+                    }
+                    if !alreadySharedBySelf {
+                        let selfShare = SharedRootInventory()
+                        selfShare.user = currentUser
+                        selfShare.inventory = inventory
+                        liveGame.publicRootInventories.append(selfShare)
+                    }
+                }
+            }
         }
 
         for user in usersToShare {
@@ -94,4 +114,5 @@ final class RootInventoryShareViewModel: ObservableObject {
         selectedRootIds.removeAll()
         selectedUserIds.removeAll()
     }
+
 }

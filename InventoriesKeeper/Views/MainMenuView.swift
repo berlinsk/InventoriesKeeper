@@ -53,7 +53,7 @@ struct MainMenuView: View {
 
             List {
                 ForEach(vm.rootInventories, id: \.id) { inv in
-                    Button(inv.common?.name ?? "Unnamed") {
+                    Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
                         path.append(inv)
                     }
                 }

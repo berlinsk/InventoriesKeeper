@@ -122,11 +122,49 @@ final class MainMenuViewModel: ObservableObject {
                     let shared = liveGame.publicRootInventories[idx]
                     liveGame.publicRootInventories.remove(at: idx)
                     realm.delete(shared)
+
+                    let allGames = realm.objects(Game.self)
+                    for game in allGames {
+                        for shared in game.publicRootInventories {
+                            guard let invId = shared.inventory?.id, let ownerId = shared.user?.id else { continue }
+                            let isSameInventory = invId == inv.id
+                            let isOtherUser = ownerId != currentUser.id
+                        }
+                    }
+
+                    let allShares = realm.objects(Game.self)
+                        .flatMap { $0.publicRootInventories }
+                        .filter { $0.inventory?.id == inv.id && $0.user?.id != currentUser.id }
+
+                    let stillPrivate = realm.objects(Game.self)
+                        .flatMap { $0.privateRootInventories }
+                        .contains { $0.id == inv.id && $0.common?.ownerId != currentUser.id }
+
+                    if allShares.isEmpty && !stillPrivate {
+                        TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+                    }
                 }
             }
         }
 
         loadRootInventories()
+    }
+    
+    // test method
+    func accessLabel(for inventory: Inventory) -> String {
+        guard let currentUser = session.currentUser() else { return "Unknown" }
+
+        if gameModel.privateRootInventories.contains(where: { $0.id == inventory.id && $0.common?.ownerId == currentUser.id }) {
+            return "[private]"
+        }
+
+        if gameModel.publicRootInventories.contains(where: {
+            $0.inventory?.id == inventory.id && $0.user?.id == currentUser.id
+        }) {
+            return "[shared]"
+        }
+
+        return "[unknown]"
     }
 
     func inventoryHierarchyDump() -> String {
