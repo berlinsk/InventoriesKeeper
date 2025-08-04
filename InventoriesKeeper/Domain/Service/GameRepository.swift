@@ -34,17 +34,21 @@ enum GameRepository {
         return Array(Set(personal + publicShared))
     }
     
-    static func createRootInventory(for game: Game, user: User, name: String, kind: InventoryKind, isPublic: Bool, in realm: Realm) {
-        let inv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: user.id)
+    static func createRootInventory(for game: Game, user: User, type: RootInventoryType, in realm: Realm) {
+        let inv = SeedFactory.makeInventory(kind: type.kind, name: type.name, ownerId: user.id)
         realm.add(inv)
 
-        if isPublic {
+        switch type {
+        case .global:
             let shared = SharedRootInventory()
             shared.user = user
             shared.inventory = inv
             game.publicRootInventories.append(shared)
-        } else {
+            game.globalInventory = inv
+
+        case .mainCharacter:
             game.privateRootInventories.append(inv)
+            game.mainCharacterInventories.append(inv)
         }
     }
 
@@ -62,8 +66,8 @@ enum GameRepository {
             owner.subscribedGames.append(obj.id)
             realm.add(obj)
 
-            createRootInventory(for: obj, user: owner, name: "Global Inventory", kind: .location, isPublic: true, in: realm)
-            createRootInventory(for: obj, user: owner, name: "Main Character", kind: .character, isPublic: false, in: realm)
+            createRootInventory(for: obj, user: owner, type: .global, in: realm)
+            createRootInventory(for: obj, user: owner, type: .mainCharacter, in: realm)
         }
         return obj
     }
@@ -73,28 +77,22 @@ enum GameRepository {
         try! realm.write {
             _subscribe(user, to: game)
             
-            let isNewParticipant = !game.privateRootInventories.contains(where: { inv in
-                inv.kind == .character && inv.common?.ownerId == user.id
-            })
-            if isNewParticipant {
-                createRootInventory(for: game, user: user, name: "Main Character", kind: .character, isPublic: false, in: realm)
+            if !game.mainCharacterInventories.contains(where: { $0.common?.ownerId == user.id }) {
+                createRootInventory(for: game, user: user, type: .mainCharacter, in: realm)
             }
             
-            let global = game.publicRootInventories
-                .first { $0.inventory?.kind == .location }
-
-            if let existingGlobal = global?.inventory {
+            if let global = game.globalInventory {
                 let alreadyShared = game.publicRootInventories.contains {
-                    $0.inventory?.id == existingGlobal.id && $0.user?.id == user.id
+                    $0.inventory?.id == global.id && $0.user?.id == user.id
                 }
                 if !alreadyShared {
-                    let newShared = SharedRootInventory()
-                    newShared.user = user
-                    newShared.inventory = existingGlobal
-                    game.publicRootInventories.append(newShared)
+                    let shared = SharedRootInventory()
+                    shared.user = user
+                    shared.inventory = global
+                    game.publicRootInventories.append(shared)
                 }
             } else {
-                createRootInventory(for: game, user: user, name: "Global Inventory", kind: .location, isPublic: true, in: realm)
+                createRootInventory(for: game, user: user, type: .global, in: realm)
             }
         }
     }

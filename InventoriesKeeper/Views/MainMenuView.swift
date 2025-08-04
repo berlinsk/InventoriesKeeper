@@ -52,12 +52,37 @@ struct MainMenuView: View {
                 .font(.headline)
 
             List {
-                ForEach(vm.rootInventories, id: \.id) { inv in
-                    Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
-                        path.append(inv)
+                if let global = vm.worldInventory {
+                    Section("Global Inventory") {
+                        Button("\(vm.accessLabel(for: global)) \(global.common?.name ?? "Unnamed")") {
+                            path.append(global)
+                        }
                     }
                 }
-                .onDelete(perform: vm.deleteRootInventory)
+
+                if let hero = vm.heroInventory {
+                    Section("Main Character") {
+                        Button("\(vm.accessLabel(for: hero)) \(hero.common?.name ?? "Unnamed")") {
+                            path.append(hero)
+                        }
+                    }
+                }
+
+                let others = vm.rootInventories.filter { inv in
+                    inv.id != vm.worldInventory?.id &&
+                    inv.id != vm.heroInventory?.id
+                }
+
+                if !others.isEmpty {
+                    Section("Other Inventories") {
+                        ForEach(others, id: \.id) { inv in
+                            Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
+                                path.append(inv)
+                            }
+                        }
+                        .onDelete(perform: vm.deleteRootInventory)
+                    }
+                }
             }
             .frame(height: 200)
 

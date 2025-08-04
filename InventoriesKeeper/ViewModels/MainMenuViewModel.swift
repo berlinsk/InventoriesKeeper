@@ -29,25 +29,46 @@ final class MainMenuViewModel: ObservableObject {
     }
     
     private func allRootsForCurrentUser() -> [Inventory] {
-        guard let currentUser = session.currentUser(),
-              let realm = gameModel.realm else {
-            return gameModel.publicRootInventories.compactMap { $0.inventory }
+        guard let currentUser = session.currentUser() else {
+            let globalId = gameModel.globalInventory?.id
+            return Array(
+                gameModel.publicRootInventories
+                    .compactMap { $0.inventory }
+                    .filter { $0.id != globalId }
+            )
         }
 
-        let privates = Array(gameModel.privateRootInventories.filter {
-            $0.common?.ownerId == currentUser.id
-        })
-
-        let sharedPublics = Array(gameModel.publicRootInventories
-            .filter { $0.user?.id == currentUser.id }
-            .compactMap { $0.inventory }
+        let globalId = gameModel.globalInventory?.id
+        let mainCharacterIds = Set(
+            gameModel.mainCharacterInventories
+                .filter { $0.common?.ownerId == currentUser.id }
+                .map { $0.id }
         )
 
-        return Array(Set(privates + sharedPublics))
+        let privates = gameModel.privateRootInventories.filter {
+            $0.common?.ownerId == currentUser.id &&
+            $0.id != globalId &&
+            !mainCharacterIds.contains($0.id)
+        }
+
+        let sharedPublics = gameModel.publicRootInventories
+            .filter { $0.user?.id == currentUser.id }
+            .compactMap { $0.inventory }
+            .filter { $0.id != globalId && !mainCharacterIds.contains($0.id) }
+
+        return Array(Set(Array(privates) + Array(sharedPublics)))
     }
 
     func loadRootInventories() {
         rootInventories = allRootsForCurrentUser()
+
+        worldInventory = gameModel.globalInventory
+
+        if let user = session.currentUser() {
+            heroInventory = gameModel.mainCharacterInventories.first { $0.common?.ownerId == user.id }
+        } else {
+            heroInventory = nil
+        }
     }
 
     func openOrCreateRoot(kind: InventoryKind, defaultName: String, path: Binding<NavigationPath>) {
@@ -110,6 +131,17 @@ final class MainMenuViewModel: ObservableObject {
             for index in indexSet {
                 let inv = rootInventories[index]
 
+                if let global = liveGame.globalInventory, inv.id == global.id {
+                    continue
+                }
+
+                let isMainCharacter = liveGame.mainCharacterInventories.contains {
+                    $0.id == inv.id && $0.common?.ownerId == currentUser.id
+                }
+                if isMainCharacter {
+                    continue
+                }
+
                 if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
                     liveGame.privateRootInventories.remove(at: idx)
                     TransferService.shared.deleteInventoryRecursively(inv, in: realm)
@@ -122,15 +154,6 @@ final class MainMenuViewModel: ObservableObject {
                     let shared = liveGame.publicRootInventories[idx]
                     liveGame.publicRootInventories.remove(at: idx)
                     realm.delete(shared)
-
-                    let allGames = realm.objects(Game.self)
-                    for game in allGames {
-                        for shared in game.publicRootInventories {
-                            guard let invId = shared.inventory?.id, let ownerId = shared.user?.id else { continue }
-                            let isSameInventory = invId == inv.id
-                            let isOtherUser = ownerId != currentUser.id
-                        }
-                    }
 
                     let allShares = realm.objects(Game.self)
                         .flatMap { $0.publicRootInventories }
@@ -168,9 +191,26 @@ final class MainMenuViewModel: ObservableObject {
     }
 
     func inventoryHierarchyDump() -> String {
-        rootInventories
-            .map { inventoryHierarchyString(for: $0) }
-            .joined()
+        var result = ""
+
+        if let world = worldInventory {
+            result += "Global Inventory:\n"
+            result += inventoryHierarchyString(for: world, indent: 1)
+        }
+
+        if let hero = heroInventory {
+            result += "\nMain Character:\n"
+            result += inventoryHierarchyString(for: hero, indent: 1)
+        }
+
+        if !rootInventories.isEmpty {
+            result += "\nOther Root Inventories:\n"
+            for inv in rootInventories {
+                result += inventoryHierarchyString(for: inv, indent: 1)
+            }
+        }
+
+        return result
     }
 
     private func inventoryHierarchyString(for inventory: Inventory, indent: Int = 0) -> String {
