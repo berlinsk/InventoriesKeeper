@@ -54,16 +54,30 @@ struct MainMenuView: View {
             List {
                 if let global = vm.worldInventory {
                     Section("Global Inventory") {
-                        Button("\(vm.accessLabel(for: global)) \(global.common?.name ?? "Unnamed")") {
-                            path.append(global)
+                        ForEach([global], id: \.id) { inv in
+                            Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
+                                path.append(inv)
+                            }
+                        }
+                        .onDelete { _ in
+                            if let inv = vm.worldInventory {
+                                vm.deleteSpecificInventory(inv)
+                            }
                         }
                     }
                 }
 
                 if let hero = vm.heroInventory {
                     Section("Main Character") {
-                        Button("\(vm.accessLabel(for: hero)) \(hero.common?.name ?? "Unnamed")") {
-                            path.append(hero)
+                        ForEach([hero], id: \.id) { inv in
+                            Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
+                                path.append(inv)
+                            }
+                        }
+                        .onDelete { _ in
+                            if let inv = vm.heroInventory {
+                                vm.deleteSpecificInventory(inv)
+                            }
                         }
                     }
                 }

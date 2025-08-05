@@ -62,7 +62,13 @@ final class MainMenuViewModel: ObservableObject {
     func loadRootInventories() {
         rootInventories = allRootsForCurrentUser()
 
-        worldInventory = gameModel.globalInventory
+        if let currentUser = session.currentUser() {
+            worldInventory = gameModel.publicRootInventories.first(where: {
+                $0.user?.id == currentUser.id && $0.inventory?.id == gameModel.globalInventory?.id
+            })?.inventory
+        } else {
+            worldInventory = nil
+        }
 
         if let user = session.currentUser() {
             heroInventory = gameModel.mainCharacterInventories.first { $0.common?.ownerId == user.id }
@@ -121,7 +127,7 @@ final class MainMenuViewModel: ObservableObject {
         }
         loadRootInventories()
     }
-
+    
     func deleteRootInventory(at indexSet: IndexSet) {
         guard let realm = try? Realm(),
               let liveGame = gameModel.thaw(),
@@ -130,47 +136,108 @@ final class MainMenuViewModel: ObservableObject {
         try? realm.write {
             for index in indexSet {
                 let inv = rootInventories[index]
-
-                if let global = liveGame.globalInventory, inv.id == global.id {
-                    continue
-                }
-
-                let isMainCharacter = liveGame.mainCharacterInventories.contains {
-                    $0.id == inv.id && $0.common?.ownerId == currentUser.id
-                }
-                if isMainCharacter {
-                    continue
-                }
-
-                if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
-                    liveGame.privateRootInventories.remove(at: idx)
-                    TransferService.shared.deleteInventoryRecursively(inv, in: realm)
-                    continue
-                }
-
-                if let idx = liveGame.publicRootInventories.firstIndex(where: {
-                    $0.inventory?.id == inv.id && $0.user?.id == currentUser.id
-                }) {
-                    let shared = liveGame.publicRootInventories[idx]
-                    liveGame.publicRootInventories.remove(at: idx)
-                    realm.delete(shared)
-
-                    let allShares = realm.objects(Game.self)
-                        .flatMap { $0.publicRootInventories }
-                        .filter { $0.inventory?.id == inv.id && $0.user?.id != currentUser.id }
-
-                    let stillPrivate = realm.objects(Game.self)
-                        .flatMap { $0.privateRootInventories }
-                        .contains { $0.id == inv.id && $0.common?.ownerId != currentUser.id }
-
-                    if allShares.isEmpty && !stillPrivate {
-                        TransferService.shared.deleteInventoryRecursively(inv, in: realm)
-                    }
-                }
+                deleteRootInventory(inv, realm: realm, liveGame: liveGame, currentUser: currentUser)
             }
         }
 
         loadRootInventories()
+    }
+    
+    private func deleteRootInventory(_ inv: Inventory, realm: Realm, liveGame: Game, currentUser: User) {
+        if let global = liveGame.globalInventory, inv.id == global.id {
+            if let idx = liveGame.publicRootInventories.firstIndex(where: {
+                $0.inventory?.id == global.id && $0.user?.id == currentUser.id
+            }) {
+                let shared = liveGame.publicRootInventories[idx]
+                liveGame.publicRootInventories.remove(at: idx)
+                realm.delete(shared)
+            }
+            loadRootInventories()
+            return
+        }
+
+        if liveGame.mainCharacterInventories.contains(where: {
+            $0.id == inv.id && $0.common?.ownerId == currentUser.id
+        }) {
+            if let idx = liveGame.mainCharacterInventories.firstIndex(of: inv) {
+                liveGame.mainCharacterInventories.remove(at: idx)
+            }
+            if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
+                liveGame.privateRootInventories.remove(at: idx)
+            }
+            TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+            loadRootInventories()
+            return
+        }
+
+        if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
+            liveGame.privateRootInventories.remove(at: idx)
+            TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+            return
+        }
+
+        if let idx = liveGame.publicRootInventories.firstIndex(where: {
+            $0.inventory?.id == inv.id && $0.user?.id == currentUser.id
+        }) {
+            let shared = liveGame.publicRootInventories[idx]
+            liveGame.publicRootInventories.remove(at: idx)
+            realm.delete(shared)
+
+            let allShares = realm.objects(Game.self)
+                .flatMap { $0.publicRootInventories }
+                .filter { $0.inventory?.id == inv.id && $0.user?.id != currentUser.id }
+
+            let stillPrivate = realm.objects(Game.self)
+                .flatMap { $0.privateRootInventories }
+                .contains { $0.id == inv.id && $0.common?.ownerId != currentUser.id }
+
+            if allShares.isEmpty && !stillPrivate {
+                TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+            }
+        }
+    }
+    
+    func deleteSpecificInventory(_ inv: Inventory) {
+        guard let realm = try? Realm(),
+              let liveGame = gameModel.thaw(),
+              let currentUser = session.currentUser() else { return }
+
+        try? realm.write {
+            deleteIfGlobalInventory(inv, realm: realm, liveGame: liveGame, currentUser: currentUser)
+            deleteIfMainCharacterInventory(inv, realm: realm, liveGame: liveGame, currentUser: currentUser)
+        }
+
+        loadRootInventories()
+    }
+
+    private func deleteIfGlobalInventory(_ inv: Inventory, realm: Realm, liveGame: Game, currentUser: User) {
+        if let global = liveGame.globalInventory, inv.id == global.id {
+            if let idx = liveGame.publicRootInventories.firstIndex(where: {
+                $0.inventory?.id == global.id && $0.user?.id == currentUser.id
+            }) {
+                let shared = liveGame.publicRootInventories[idx]
+                liveGame.publicRootInventories.remove(at: idx)
+                realm.delete(shared)
+            }
+            loadRootInventories()
+            return
+        }
+    }
+
+    private func deleteIfMainCharacterInventory(_ inv: Inventory, realm: Realm, liveGame: Game, currentUser: User) {
+        if liveGame.mainCharacterInventories.contains(where: {
+            $0.id == inv.id && $0.common?.ownerId == currentUser.id
+        }) {
+            if let idx = liveGame.mainCharacterInventories.firstIndex(of: inv) {
+                liveGame.mainCharacterInventories.remove(at: idx)
+            }
+            if let idx = liveGame.privateRootInventories.firstIndex(of: inv) {
+                liveGame.privateRootInventories.remove(at: idx)
+            }
+            TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+            loadRootInventories()
+            return
+        }
     }
     
     // test method
