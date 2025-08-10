@@ -101,16 +101,16 @@ final class UserSession: ObservableObject {
         let realm = try! Realm()
 
         try! realm.write {
-            let gameIds = Array(user.subscribedGames)
+            guard let liveUser = realm.object(ofType: User.self, forPrimaryKey: user.id) else { return }
+
+            let gameIds = Array(liveUser.subscribedGames)
             for gid in gameIds {
                 if let game = realm.object(ofType: Game.self, forPrimaryKey: gid) {
-                    GameRepository.unsubscribeAndCleanup(user, from: game, in: realm)
+                    GameRepository.unsubscribeAndCleanup(liveUser, from: game, in: realm)
                 }
             }
 
-            if let managedUser = realm.object(ofType: User.self, forPrimaryKey: user.id) {
-                realm.delete(managedUser)
-            }
+            realm.delete(liveUser)
         }
 
         clearSession()

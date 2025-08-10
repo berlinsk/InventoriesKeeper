@@ -9,7 +9,15 @@ import Foundation
 import SwiftUI
 import RealmSwift
 
+enum AdminPanelTab: String, CaseIterable, Hashable, Identifiable {
+    case dashboard = "Dashboard"
+    case subscriptions = "Subscriptions"
+    var id: String { rawValue }
+}
+
 final class AdminPanelViewModel: ObservableObject {
+    @Published var activeTab: AdminPanelTab = .dashboard
+
     @Published var users: [User] = []
     @Published var games: [Game] = []
 
@@ -18,6 +26,8 @@ final class AdminPanelViewModel: ObservableObject {
     @Published var allItems: [Item] = []
 
     @Published var listReloadKey = UUID()
+
+    @Published var subscriptions: [ObjectId: [Game]] = [:]
 
     private let session: UserSession
 
@@ -61,6 +71,7 @@ final class AdminPanelViewModel: ObservableObject {
         } else {
             clearDump()
         }
+        reloadSubscriptions()
         listReloadKey = UUID()
     }
 
@@ -112,6 +123,7 @@ final class AdminPanelViewModel: ObservableObject {
                 self.users = []
                 self.games = []
                 self.clearDump()
+                self.subscriptions.removeAll()
                 self.listReloadKey = UUID()
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -157,5 +169,56 @@ final class AdminPanelViewModel: ObservableObject {
 
     func logout() {
         session.logout()
+    }
+
+    func reloadSubscriptions() {
+        let realm = try! Realm()
+        let rUsers = realm.objects(User.self).freeze()
+        var map: [ObjectId: [Game]] = [:]
+        for u in rUsers {
+            var gamesForUser: [Game] = []
+            for gid in u.subscribedGames {
+                if let g = realm.object(ofType: Game.self, forPrimaryKey: gid)?.freeze() {
+                    gamesForUser.append(g)
+                }
+            }
+            gamesForUser.sort { (a, b) in
+                if a.isInvalidated && !b.isInvalidated { return false }
+                if !a.isInvalidated && b.isInvalidated { return true }
+                let at = a.isInvalidated ? "" : a.title
+                let bt = b.isInvalidated ? "" : b.title
+                return at.localizedCaseInsensitiveCompare(bt) == .orderedAscending
+            }
+            map[u.id] = gamesForUser
+        }
+        self.users = Array(rUsers)
+        self.subscriptions = map
+        listReloadKey = UUID()
+    }
+
+    func unsubscribe(userId: ObjectId, from gameId: ObjectId) {
+        let realm = try! Realm()
+        try! realm.write {
+            guard
+                let user = realm.object(ofType: User.self, forPrimaryKey: userId),
+                let game = realm.object(ofType: Game.self, forPrimaryKey: gameId)
+            else { return }
+            GameRepository.unsubscribeAndCleanup(user, from: game, in: realm)
+        }
+        reloadSubscriptions()
+    }
+
+    func unsubscribeAll(userId: ObjectId) {
+        let realm = try! Realm()
+        try! realm.write {
+            guard let user = realm.object(ofType: User.self, forPrimaryKey: userId) else { return }
+            let ids = Array(user.subscribedGames)
+            for gid in ids {
+                if let game = realm.object(ofType: Game.self, forPrimaryKey: gid) {
+                    GameRepository.unsubscribeAndCleanup(user, from: game, in: realm)
+                }
+            }
+        }
+        reloadSubscriptions()
     }
 }

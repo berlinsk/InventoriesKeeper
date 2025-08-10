@@ -173,20 +173,22 @@ enum GameRepository {
     static func delete(game: Game) throws {
         let realm = try Realm()
         try realm.write {
-            for shared in game.publicRootInventories {
+            guard let live = realm.object(ofType: Game.self, forPrimaryKey: game.id) else { return }
+
+            for shared in live.publicRootInventories {
                 if let inv = shared.inventory {
                     TransferService.shared.deleteInventoryRecursively(inv, in: realm)
                 }
             }
 
-            for inv in game.privateRootInventories {
+            for inv in live.privateRootInventories {
                 TransferService.shared.deleteInventoryRecursively(inv, in: realm)
             }
 
-            game.publicRootInventories.removeAll()
-            game.privateRootInventories.removeAll()
-            
-            realm.delete(game)
+            live.publicRootInventories.removeAll()
+            live.privateRootInventories.removeAll()
+
+            realm.delete(live)
         }
     }
 }
