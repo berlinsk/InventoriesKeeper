@@ -106,15 +106,67 @@ enum GameRepository {
         }
     }
     
+    static func unsubscribeAndCleanup(_ user: User, from game: Game) {
+        let realm = try! Realm()
+        try! realm.write {
+            unsubscribeAndCleanup(user, from: game, in: realm)
+        }
+    }
+
+    static func unsubscribeAndCleanup(_ user: User, from game: Game, in realm: Realm) {
+        if let i = user.subscribedGames.firstIndex(of: game.id) {
+            user.subscribedGames.remove(at: i)
+        }
+        if let j = game.participantIds.firstIndex(of: user.id) {
+            game.participantIds.remove(at: j)
+        }
+
+        var toDelete: Set<ObjectId> = []
+
+        for inv in game.privateRootInventories where inv.common?.ownerId == user.id {
+            toDelete.insert(inv.id)
+        }
+        for inv in game.mainCharacterInventories where inv.common?.ownerId == user.id {
+            toDelete.insert(inv.id)
+        }
+
+        for id in toDelete {
+            if let inv = realm.object(ofType: Inventory.self, forPrimaryKey: id) {
+                if let idx = game.privateRootInventories.firstIndex(of: inv) {
+                    game.privateRootInventories.remove(at: idx)
+                }
+                if let idx = game.mainCharacterInventories.firstIndex(of: inv) {
+                    game.mainCharacterInventories.remove(at: idx)
+                }
+                TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+            }
+        }
+
+        var k = game.publicRootInventories.count - 1
+        while k >= 0 {
+            if game.publicRootInventories[k].user?.id == user.id {
+                game.publicRootInventories.remove(at: k)
+            }
+            k -= 1
+        }
+
+        if game.participantIds.isEmpty, let global = game.globalInventory {
+            var m = game.publicRootInventories.count - 1
+            while m >= 0 {
+                if game.publicRootInventories[m].inventory?.id == global.id {
+                    game.publicRootInventories.remove(at: m)
+                }
+                m -= 1
+            }
+            TransferService.shared.deleteInventoryRecursively(global, in: realm)
+            game.globalInventory = nil
+        }
+    }
+
     static func unsubscribe(_ user: User, from game: Game) {
-        guard let realm = try? Realm() else { return }
-        try? realm.write {
-            if let index = user.subscribedGames.firstIndex(of: game.id) {
-                user.subscribedGames.remove(at: index)
-            }
-            if let index = game.participantIds.firstIndex(of: user.id) {
-                game.participantIds.remove(at: index)
-            }
+        let realm = try! Realm()
+        try! realm.write {
+            unsubscribeAndCleanup(user, from: game, in: realm)
         }
     }
 

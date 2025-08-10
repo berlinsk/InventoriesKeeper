@@ -13,6 +13,10 @@ final class AdminPanelViewModel: ObservableObject {
     @Published var users: [User] = []
     @Published var games: [Game] = []
 
+    @Published var showDump = false
+    @Published var allInventories: [Inventory] = []
+    @Published var allItems: [Item] = []
+
     private let session: UserSession
 
     init(session: UserSession) {
@@ -21,19 +25,46 @@ final class AdminPanelViewModel: ObservableObject {
 
     func fetchUsers() {
         let realm = try! Realm()
-        let rUsers = realm.objects(User.self)
-        users = Array(rUsers)
+        users = Array(realm.objects(User.self))
     }
-    
+
     func fetchGames() {
         games = GameRepository.allGames()
+    }
+
+    func loadDumpSnapshot() {
+        let realm = try! Realm()
+        let invs = realm.objects(Inventory.self).freeze()
+        let items = realm.objects(Item.self).freeze()
+        self.allInventories = Array(invs)
+        self.allItems = Array(items)
+    }
+
+    func clearDump() {
+        self.allInventories.removeAll()
+        self.allItems.removeAll()
+    }
+
+    func setShowDump(_ on: Bool) {
+        showDump = on
+        if on { loadDumpSnapshot() } else { clearDump() }
+    }
+
+    private func afterMutationRefresh() {
+        fetchUsers()
+        fetchGames()
+        if showDump {
+            loadDumpSnapshot()
+        } else {
+            clearDump()
+        }
     }
 
     func deleteUsers(at offsets: IndexSet) {
         for i in offsets {
             deleteUser(users[i])
         }
-        fetchUsers()
+        afterMutationRefresh()
     }
 
     private func deleteUser(_ user: User) {
@@ -53,14 +84,12 @@ final class AdminPanelViewModel: ObservableObject {
             let game = games[i]
             try? GameRepository.delete(game: game)
         }
-        fetchGames()
+        afterMutationRefresh()
     }
 
     func exportUserRealm(user: User) {
         let realmFileURL = FileManager.documentsURL.appendingPathComponent("\(user.username).realm")
-
         let activityVC = UIActivityViewController(activityItems: [realmFileURL], applicationActivities: nil)
-
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootVC = scene.windows.first?.rootViewController {
             rootVC.present(activityVC, animated: true)
@@ -78,8 +107,7 @@ final class AdminPanelViewModel: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.deleteAllData()
                 DispatchQueue.main.async {
-                    self.users = []
-                    self.games = []
+                    self.afterMutationRefresh()
                 }
             }
         })
@@ -108,9 +136,9 @@ final class AdminPanelViewModel: ObservableObject {
         }
         
         let allGames = GameRepository.allGames()
-            for game in allGames {
-                try? GameRepository.delete(game: game)
-            }
+        for game in allGames {
+            try? GameRepository.delete(game: game)
+        }
 
         if removedCurrent {
             session.logout()

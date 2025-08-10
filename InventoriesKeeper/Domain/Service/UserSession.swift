@@ -101,10 +101,10 @@ final class UserSession: ObservableObject {
         let realm = try! Realm()
 
         try! realm.write {
-            let allGames = realm.objects(Game.self)
-            for game in allGames {
-                if let index = game.participantIds.firstIndex(of: user.id) {
-                    game.participantIds.remove(at: index)
+            let gameIds = Array(user.subscribedGames)
+            for gid in gameIds {
+                if let game = realm.object(ofType: Game.self, forPrimaryKey: gid) {
+                    GameRepository.unsubscribeAndCleanup(user, from: game, in: realm)
                 }
             }
 
