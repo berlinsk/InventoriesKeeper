@@ -28,7 +28,8 @@ struct AdminPanelView: View {
                         .onDelete(perform: vm.deleteUsers)
                     }
                 } else {
-                    Text("No users to display").foregroundColor(.gray)
+                    Text("No users to display")
+                        .foregroundColor(.gray)
                 }
 
                 if !vm.games.isEmpty {
@@ -44,7 +45,8 @@ struct AdminPanelView: View {
                         .onDelete(perform: vm.deleteGames)
                     }
                 } else {
-                    Text("No games to display").foregroundColor(.gray)
+                    Text("No games to display")
+                        .foregroundColor(.gray)
                 }
 
                 Section {
@@ -87,6 +89,7 @@ struct AdminPanelView: View {
                     }
                 }
             }
+            .id(vm.listReloadKey)
             .navigationTitle("Admin Panel")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

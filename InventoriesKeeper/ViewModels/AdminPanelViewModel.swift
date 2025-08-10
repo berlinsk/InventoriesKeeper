@@ -17,6 +17,8 @@ final class AdminPanelViewModel: ObservableObject {
     @Published var allInventories: [Inventory] = []
     @Published var allItems: [Item] = []
 
+    @Published var listReloadKey = UUID()
+
     private let session: UserSession
 
     init(session: UserSession) {
@@ -25,11 +27,12 @@ final class AdminPanelViewModel: ObservableObject {
 
     func fetchUsers() {
         let realm = try! Realm()
-        users = Array(realm.objects(User.self))
+        users = Array(realm.objects(User.self).freeze())
     }
 
     func fetchGames() {
-        games = GameRepository.allGames()
+        let realm = try! Realm()
+        games = Array(realm.objects(Game.self).freeze())
     }
 
     func loadDumpSnapshot() {
@@ -58,6 +61,7 @@ final class AdminPanelViewModel: ObservableObject {
         } else {
             clearDump()
         }
+        listReloadKey = UUID()
     }
 
     func deleteUsers(at offsets: IndexSet) {
@@ -104,6 +108,12 @@ final class AdminPanelViewModel: ObservableObject {
         )
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         alert.addAction(UIAlertAction(title: "Delete All", style: .destructive) { _ in
+            DispatchQueue.main.async {
+                self.users = []
+                self.games = []
+                self.clearDump()
+                self.listReloadKey = UUID()
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.deleteAllData()
                 DispatchQueue.main.async {
@@ -135,7 +145,7 @@ final class AdminPanelViewModel: ObservableObject {
             }
         }
         
-        let allGames = GameRepository.allGames()
+        let allGames = Array(realm.objects(Game.self))
         for game in allGames {
             try? GameRepository.delete(game: game)
         }
