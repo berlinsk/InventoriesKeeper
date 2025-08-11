@@ -23,7 +23,7 @@ final class AddGameViewModel: ObservableObject {
             title: title,
             details: details.isEmpty ? nil : details,
             isPublic: isPublic,
-            for: user
+            owner: user
         )
     }
 }

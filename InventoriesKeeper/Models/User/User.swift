@@ -15,5 +15,5 @@ class User: Object, ObjectKeyIdentifiable {
     @Persisted var isAdmin: Bool
     @Persisted var isLoggedIn: Bool = false
 
-    @Persisted var games = List<Game>()
+    @Persisted var subscribedGames = List<ObjectId>()
 }

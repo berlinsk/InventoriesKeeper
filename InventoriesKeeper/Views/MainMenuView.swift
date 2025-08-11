@@ -11,6 +11,7 @@ import RealmSwift
 struct MainMenuView: View {
     @StateObject private var vm: MainMenuViewModel
     @Binding var path: NavigationPath
+    @State private var showingShare = false
 
     init(game: Game, session: UserSession, path: Binding<NavigationPath>) {
         _vm = StateObject(wrappedValue: MainMenuViewModel(game: game, session: session))
@@ -36,9 +37,14 @@ struct MainMenuView: View {
             .buttonStyle(.borderedProminent)
 
             Button("+ Add root inv") {
-                vm.createAndPushRoot(kind: .generic, name: "Root \(Int.random(in: 1...999))")
+                vm.createAndPushRoot(kind: .generic, name: "Root \(Int.random(in: 1...999))", isPublic: false)
             }
             .buttonStyle(.bordered)
+            
+            Button("Share Roots") {
+                showingShare = true
+            }
+            .buttonStyle(.borderedProminent)
 
             Divider().padding(.vertical, 8)
 
@@ -46,14 +52,53 @@ struct MainMenuView: View {
                 .font(.headline)
 
             List {
-                ForEach(vm.rootInventories, id: \.id) { inv in
-                    Button(inv.common?.name ?? "Unnamed") {
-                        path.append(inv)
+                if let global = vm.worldInventory {
+                    Section("Global Inventory") {
+                        ForEach([global], id: \.id) { inv in
+                            Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
+                                path.append(inv)
+                            }
+                        }
+                        .onDelete { _ in
+                            if let inv = vm.worldInventory {
+                                vm.deleteSpecificInventory(inv)
+                            }
+                        }
                     }
                 }
-                .onDelete(perform: vm.deleteRootInventory)
+
+                if let hero = vm.heroInventory {
+                    Section("Main Character") {
+                        ForEach([hero], id: \.id) { inv in
+                            Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
+                                path.append(inv)
+                            }
+                        }
+                        .onDelete { _ in
+                            if let inv = vm.heroInventory {
+                                vm.deleteSpecificInventory(inv)
+                            }
+                        }
+                    }
+                }
+
+                let others = vm.rootInventories.filter { inv in
+                    inv.id != vm.worldInventory?.id &&
+                    inv.id != vm.heroInventory?.id
+                }
+
+                if !others.isEmpty {
+                    Section("Other Inventories") {
+                        ForEach(others, id: \.id) { inv in
+                            Button("\(vm.accessLabel(for: inv)) \(inv.common?.name ?? "Unnamed")") {
+                                path.append(inv)
+                            }
+                        }
+                        .onDelete(perform: vm.deleteRootInventory)
+                    }
+                }
             }
-            .frame(height: 300)
+            .frame(height: 200)
 
             ScrollView {
                 Text(vm.inventoryHierarchyDump())
@@ -67,8 +112,11 @@ struct MainMenuView: View {
         .navigationDestination(for: Inventory.self) { rInv in
             InventoryDomainView(gameModel: vm.gameModel, invModel: rInv)
         }
-        .onChange(of: vm.gameModel.rootInventories.count) { _ in
+        .onChange(of: vm.rootInventories.count) { _ in
             vm.handleRootChange(path: $path)
+        }
+        .sheet(isPresented: $showingShare) {
+            RootInventoryShareView(game: vm.gameModel, session: vm.session)
         }
     }
 }

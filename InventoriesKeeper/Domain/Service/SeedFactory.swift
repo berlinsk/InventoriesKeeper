@@ -9,12 +9,13 @@ import SwiftUI
 import RealmSwift
 
 enum SeedFactory {
-    static func makeInventory(kind: InventoryKind, name: String, ownerId: ObjectId? = nil) -> Inventory {
+    static func makeInventory(kind: InventoryKind, name: String, ownerInventoryID: ObjectId? = nil, ownerUserID: ObjectId? = nil) -> Inventory {
         let inv = Inventory()
         inv.id = ObjectId.generate()
         let common = ItemInventoryCommonFields()
         common.name = name
-        common.ownerId = ownerId ?? inv.id
+        common.ownerInventoryID = ownerInventoryID ?? inv.id
+        common.ownerUserID = ownerUserID
         common.weight = Weight(value: Double.random(in: 5...20), unit: .kg)
         common.createdAt = Date()
         inv.common = common
@@ -32,12 +33,12 @@ enum SeedFactory {
     }
 
 
-    static func makeItem(kind: ItemKind, name: String, ownerId: ObjectId) -> Item {
+    static func makeItem(kind: ItemKind, name: String, ownerInventoryID: ObjectId) -> Item {
         let item = Item()
         item.id = ObjectId.generate()
         let common = ItemInventoryCommonFields()
         common.name      = name
-        common.ownerId   = ownerId
+        common.ownerInventoryID   = ownerInventoryID
         common.weight    = Weight(value: Double.random(in: 0.1...3000), unit: .kg)
         common.createdAt = Date()
         item.common = common

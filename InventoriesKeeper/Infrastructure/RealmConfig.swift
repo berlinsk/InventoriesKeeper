@@ -27,6 +27,7 @@ enum RealmConfig {
                 Item.self,
                 Inventory.self,
                 ItemInventoryCommonFields.self,
+                SharedRootInventory.self,
                 FoodItemDetails.self,
                 LiquidItemDetails.self,
                 BookItemDetails.self,

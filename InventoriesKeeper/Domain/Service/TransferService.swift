@@ -34,6 +34,8 @@ final class TransferService {
             if !live.canAccept(rItem: item) {
                 throw TransferError.capacityExceeded
             }
+            item.common?.ownerInventoryID = live.id
+            item.common?.ownerUserID = live.common?.ownerUserID
             live.items.append(item)
             live.updateCachedValuesRecursively()
         }
@@ -50,6 +52,7 @@ final class TransferService {
             if !live.canAccept(rInventory: child) {
                 throw TransferError.capacityExceeded
             }
+            child.common?.ownerInventoryID = live.id
             live.inventories.append(child)
             live.updateCachedValuesRecursively()
         }
@@ -114,6 +117,8 @@ final class TransferService {
             if let idx = parent.items.firstIndex(of: item) {
                 parent.items.remove(at: idx)
             }
+            item.common?.ownerInventoryID = target.id
+            item.common?.ownerUserID = target.common?.ownerUserID
             target.items.append(item)
 
             target.updateCachedValuesRecursively()
@@ -147,7 +152,7 @@ final class TransferService {
             if let idx = parent.inventories.firstIndex(of: child) {
                 parent.inventories.remove(at: idx)
             }
-            child.common?.ownerId = target.id
+            child.common?.ownerInventoryID = target.id
             target.inventories.append(child)
 
             target.updateCachedValuesRecursively()
