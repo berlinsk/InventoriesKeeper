@@ -79,7 +79,7 @@ final class InventoryPickerViewModel: ObservableObject {
         guard let u = user else { return publics }
 
         let privates = game.privateRootInventories
-            .filter { $0.common?.ownerId == u.id }
+            .filter { $0.common?.ownerUserID == u.id }
 
         return publics + Array(privates)
     }

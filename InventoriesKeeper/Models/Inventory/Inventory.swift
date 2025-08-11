@@ -122,8 +122,8 @@ extension Inventory {
 
         cachedTotalValue = cachedTotalPersonalValue + cachedTotalMoneyAmount
 
-        if let ownerId = common?.ownerId,
-           let parent = realm.object(ofType: Inventory.self, forPrimaryKey: ownerId),
+        if let ownerInventoryID = common?.ownerInventoryID,
+           let parent = realm.object(ofType: Inventory.self, forPrimaryKey: ownerInventoryID),
            parent.id != self.id {
             parent.updateCachedValuesRecursively()
         }
@@ -154,11 +154,11 @@ extension Inventory {
         return newInv
     }
 
-    static func createChild(kind: InventoryKind, name: String, ownerId: ObjectId) -> Inventory {
+    static func createChild(kind: InventoryKind, name: String, ownerInventoryID: ObjectId) -> Inventory {
         let realm = try! Realm()
         var newInv: Inventory!
         try! realm.write {
-            newInv = SeedFactory.makeInventory(kind: kind, name: name, ownerId: ownerId)
+            newInv = SeedFactory.makeInventory(kind: kind, name: name, ownerInventoryID: ownerInventoryID)
             realm.add(newInv)
             newInv.updateCachedValuesRecursively()
         }
@@ -177,14 +177,14 @@ extension Inventory {
     static func getAllRoots() -> [Inventory] {
         let realm = try! Realm()
         return realm.objects(Inventory.self)
-            .filter("common.ownerId == id")
+            .filter("common.ownerInventoryID == id")
             .map { $0 }
     }
 
     static func findRoot(kind: InventoryKind) -> Inventory? {
         let realm = try! Realm()
         return realm.objects(Inventory.self)
-            .filter("kind == %@ AND common.ownerId == id", kind.rawValue)
+            .filter("kind == %@ AND common.ownerInventoryID == id", kind.rawValue)
             .first
     }
 }

@@ -24,7 +24,7 @@ enum GameRepository {
         let realm = try! Realm()
 
         let personal = Array(game.privateRootInventories.filter {
-            $0.common?.ownerId == user.id
+            $0.common?.ownerUserID == user.id
         })
 
         let publicShared = game.publicRootInventories
@@ -35,7 +35,7 @@ enum GameRepository {
     }
     
     static func createRootInventory(for game: Game, user: User, type: RootInventoryType, in realm: Realm) {
-        let inv = SeedFactory.makeInventory(kind: type.kind, name: type.name, ownerId: user.id)
+        let inv = SeedFactory.makeInventory(kind: type.kind, name: type.name, ownerInventoryID: nil, ownerUserID: user.id)
         realm.add(inv)
 
         switch type {
@@ -77,7 +77,7 @@ enum GameRepository {
         try! realm.write {
             _subscribe(user, to: game)
             
-            if !game.mainCharacterInventories.contains(where: { $0.common?.ownerId == user.id }) {
+            if !game.mainCharacterInventories.contains(where: { $0.common?.ownerUserID == user.id }) {
                 createRootInventory(for: game, user: user, type: .mainCharacter, in: realm)
             }
             
@@ -123,10 +123,10 @@ enum GameRepository {
 
         var toDelete: Set<ObjectId> = []
 
-        for inv in game.privateRootInventories where inv.common?.ownerId == user.id {
+        for inv in game.privateRootInventories where inv.common?.ownerUserID == user.id {
             toDelete.insert(inv.id)
         }
-        for inv in game.mainCharacterInventories where inv.common?.ownerId == user.id {
+        for inv in game.mainCharacterInventories where inv.common?.ownerUserID == user.id {
             toDelete.insert(inv.id)
         }
 

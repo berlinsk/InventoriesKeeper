@@ -28,7 +28,7 @@ final class RootInventoryShareViewModel: ObservableObject {
         guard let liveGame = realm.object(ofType: Game.self, forPrimaryKey: game.id), let currentUser = session.user else { return }
 
         let ownedPrivate = Array(liveGame.privateRootInventories.filter {
-            $0.common?.ownerId == currentUser.id
+            $0.common?.ownerUserID == currentUser.id
         })
 
         let sharedPublic = liveGame.publicRootInventories

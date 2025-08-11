@@ -41,12 +41,12 @@ final class MainMenuViewModel: ObservableObject {
         let globalId = gameModel.globalInventory?.id
         let mainCharacterIds = Set(
             gameModel.mainCharacterInventories
-                .filter { $0.common?.ownerId == currentUser.id }
+                .filter { $0.common?.ownerUserID == currentUser.id }
                 .map { $0.id }
         )
 
         let privates = gameModel.privateRootInventories.filter {
-            $0.common?.ownerId == currentUser.id &&
+            $0.common?.ownerUserID == currentUser.id &&
             $0.id != globalId &&
             !mainCharacterIds.contains($0.id)
         }
@@ -71,7 +71,7 @@ final class MainMenuViewModel: ObservableObject {
         }
 
         if let user = session.currentUser() {
-            heroInventory = gameModel.mainCharacterInventories.first { $0.common?.ownerId == user.id }
+            heroInventory = gameModel.mainCharacterInventories.first { $0.common?.ownerUserID == user.id }
         } else {
             heroInventory = nil
         }
@@ -97,7 +97,8 @@ final class MainMenuViewModel: ObservableObject {
             let newInv = SeedFactory.makeInventory(
                 kind: kind,
                 name: name,
-                ownerId: currentUser.id
+                ownerInventoryID: nil,
+                ownerUserID: currentUser.id
             )
             realm.add(newInv)
 
@@ -157,7 +158,7 @@ final class MainMenuViewModel: ObservableObject {
         }
 
         if liveGame.mainCharacterInventories.contains(where: {
-            $0.id == inv.id && $0.common?.ownerId == currentUser.id
+            $0.id == inv.id && $0.common?.ownerUserID == currentUser.id
         }) {
             if let idx = liveGame.mainCharacterInventories.firstIndex(of: inv) {
                 liveGame.mainCharacterInventories.remove(at: idx)
@@ -189,7 +190,7 @@ final class MainMenuViewModel: ObservableObject {
 
             let stillPrivate = realm.objects(Game.self)
                 .flatMap { $0.privateRootInventories }
-                .contains { $0.id == inv.id && $0.common?.ownerId != currentUser.id }
+                .contains { $0.id == inv.id && $0.common?.ownerUserID != currentUser.id }
 
             if allShares.isEmpty && !stillPrivate {
                 TransferService.shared.deleteInventoryRecursively(inv, in: realm)
@@ -226,7 +227,7 @@ final class MainMenuViewModel: ObservableObject {
 
     private func deleteIfMainCharacterInventory(_ inv: Inventory, realm: Realm, liveGame: Game, currentUser: User) {
         if liveGame.mainCharacterInventories.contains(where: {
-            $0.id == inv.id && $0.common?.ownerId == currentUser.id
+            $0.id == inv.id && $0.common?.ownerUserID == currentUser.id
         }) {
             if let idx = liveGame.mainCharacterInventories.firstIndex(of: inv) {
                 liveGame.mainCharacterInventories.remove(at: idx)
@@ -244,7 +245,7 @@ final class MainMenuViewModel: ObservableObject {
     func accessLabel(for inventory: Inventory) -> String {
         guard let currentUser = session.currentUser() else { return "Unknown" }
 
-        if gameModel.privateRootInventories.contains(where: { $0.id == inventory.id && $0.common?.ownerId == currentUser.id }) {
+        if gameModel.privateRootInventories.contains(where: { $0.id == inventory.id && $0.common?.ownerUserID == currentUser.id }) {
             return "[private]"
         }
 

@@ -44,7 +44,7 @@ final class GamesListViewModel: ObservableObject {
         guard let currentUser = session.currentUser() else { return }
         for index in offsets {
             let game = games[index]
-            if game.ownerId == currentUser.id {
+            if game.gameOwnerUserID == currentUser.id {
                 try? GameRepository.delete(game: game)
             } else {
                 GameRepository.unsubscribe(currentUser, from: game)

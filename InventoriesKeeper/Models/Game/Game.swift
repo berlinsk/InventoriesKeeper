@@ -41,7 +41,7 @@ enum RootInventoryType {
 
 class Game: Object, ObjectKeyIdentifiable {
     @Persisted(primaryKey: true) var id: ObjectId
-    @Persisted var ownerId: ObjectId?
+    @Persisted var gameOwnerUserID: ObjectId?
     @Persisted var title: String = ""
     @Persisted var details: String?
     @Persisted var isPublic: Bool = false

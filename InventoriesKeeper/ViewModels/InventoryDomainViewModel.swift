@@ -16,7 +16,7 @@ final class InventoryDomainViewModel: ObservableObject {
 
     func addItem(kind: ItemKind, name: String, to inventory: Inventory) {
         let realm = try! Realm()
-        let item = SeedFactory.makeItem(kind: kind, name: name, ownerId: inventory.id)
+        let item = SeedFactory.makeItem(kind: kind, name: name, ownerInventoryID: inventory.id)
         DispatchQueue.main.async {
             do {
                 try TransferService.shared.add(item: item, to: inventory, in: realm)
@@ -27,7 +27,7 @@ final class InventoryDomainViewModel: ObservableObject {
     }
 
     func addInventory(kind: InventoryKind, name: String, to inventory: Inventory) {
-        let inv = Inventory.createChild(kind: kind, name: name, ownerId: inventory.id)
+        let inv = Inventory.createChild(kind: kind, name: name, ownerInventoryID: inventory.id)
         let realm = try! Realm()
         DispatchQueue.main.async {
             do {
