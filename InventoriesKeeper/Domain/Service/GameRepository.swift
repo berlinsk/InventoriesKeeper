@@ -142,12 +142,23 @@ enum GameRepository {
             }
         }
 
+        var affectedInvIds = Set<ObjectId>()
         var k = game.publicRootInventories.count - 1
         while k >= 0 {
-            if game.publicRootInventories[k].user?.id == user.id {
+            let share = game.publicRootInventories[k]
+            if share.user?.id == user.id {
+                if let sid = share.inventory?.id {
+                    affectedInvIds.insert(sid)
+                }
                 game.publicRootInventories.remove(at: k)
             }
             k -= 1
+        }
+
+        for invId in affectedInvIds {
+            if let inv = realm.object(ofType: Inventory.self, forPrimaryKey: invId) {
+                tryDeleteIfOrphan(inv, in: realm)
+            }
         }
 
         if game.participantIds.isEmpty, let global = game.globalInventory {
@@ -175,8 +186,15 @@ enum GameRepository {
         try realm.write {
             guard let live = realm.object(ofType: Game.self, forPrimaryKey: game.id) else { return }
 
-            for shared in live.publicRootInventories {
-                if let inv = shared.inventory {
+            var publicInvIds = Set<ObjectId>()
+            for share in live.publicRootInventories {
+                if let invId = share.inventory?.id {
+                    publicInvIds.insert(invId)
+                }
+            }
+
+            for invId in publicInvIds {
+                if let inv = realm.object(ofType: Inventory.self, forPrimaryKey: invId) {
                     TransferService.shared.deleteInventoryRecursively(inv, in: realm)
                 }
             }
@@ -184,11 +202,35 @@ enum GameRepository {
             for inv in live.privateRootInventories {
                 TransferService.shared.deleteInventoryRecursively(inv, in: realm)
             }
+            for inv in live.mainCharacterInventories {
+                if realm.object(ofType: Inventory.self, forPrimaryKey: inv.id) != nil {
+                    TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+                }
+            }
 
             live.publicRootInventories.removeAll()
             live.privateRootInventories.removeAll()
+            live.mainCharacterInventories.removeAll()
+            live.globalInventory = nil
 
             realm.delete(live)
         }
     }
+    
+    private static func inventoryIsReferencedAnywhere(_ invId: ObjectId, in realm: Realm) -> Bool {
+        for g in realm.objects(Game.self) {
+            if g.globalInventory?.id == invId { return true }
+            if g.privateRootInventories.contains(where: { $0.id == invId }) { return true }
+            if g.mainCharacterInventories.contains(where: { $0.id == invId }) { return true }
+            if g.publicRootInventories.contains(where: { $0.inventory?.id == invId }) { return true }
+        }
+        return false
+    }
+
+    private static func tryDeleteIfOrphan(_ inv: Inventory, in realm: Realm) {
+        let invId = inv.id
+        if inventoryIsReferencedAnywhere(invId, in: realm) { return }
+        TransferService.shared.deleteInventoryRecursively(inv, in: realm)
+    }
+
 }
